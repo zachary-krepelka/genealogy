@@ -5,7 +5,7 @@
 # DATE: Monday, August 11th, 2025
 # ABOUT: recursive json file accumulator
 # ORIGIN: https://github.com/zachary-krepelka/genealogy.git
-# UPDATED: Monday, July 27th, 2026 at 3:11 PM
+# UPDATED: Monday, July 27th, 2026 at 5:21 PM
 
 # Functions --------------------------------------------------------------- {{{1
 
@@ -18,11 +18,11 @@ usage() {
 	Recursive JSON File Accumulator
 
 	Usage:
-	  bash $program [options] <path> <json-target>
+	  bash $program [-hH] [-k <key>] [-a <k:v>]... <dir> <filename>
 
 	Options:
-	  -a FIELD:FILENAME  [a]ppend file resource to each object if present
-	  -k KEY             change name of [k]ey under which objects are nested
+	  -k <key>             change name of [k]ey under which objects are nested
+	  -a <field:filename>  [a]ppend file resource to each object if present
 
 	Documentation:
 	  -h  display this [h]elp message and exit
@@ -78,15 +78,28 @@ walk() {
 }
 
 get_json() {
-	local directory="$1"
+	local directory="$1" filter= resource_{field,file,path}
 
-	if $opt_append && test -f "$directory/$resource_file"
+	if $opt_append
 	then
-		resource_path="$(realpath "$directory/$resource_file")"
-		filter="$resource_field = \"$resource_path\""
-	else
-		filter=.
+		eval "$serialized_resources"
+
+		for resource_field in "${!resources[@]}"
+		do
+			resource_file="${resources[$resource_field]}"
+			resource_path="$directory/$resource_file"
+
+			if test -f "$resource_path"
+			then
+				resource_path="$(realpath "$resource_path")"
+				filter+="$resource_field = \"$resource_path\" | "
+			fi
+		done
+
+		filter="${filter% | }"
 	fi
+
+	test -z "$filter" && filter=.
 
 	jq "$filter" "$directory/$target"
 }
@@ -103,16 +116,14 @@ get_children() {
 
 declare opt_{help,doc,append,invalid}=false
 
+declare -A resources
+
 key=children
 
 while getopts ':a:hHk:' opt
 do
 	case "$opt" in
-		a)
-			opt_append=true
-			resource_field="${OPTARG%:*}"
-			resource_file="${OPTARG##*:}"
-		;;
+		a) opt_append=true; resources["${OPTARG%:*}"]="${OPTARG##*:}";;
 		h) opt_help=true;;
 		H) opt_doc=true;;
 		k) key="$OPTARG";;
@@ -162,7 +173,7 @@ fi
 
 # Main Processing --------------------------------------------------------- {{{1
 
-export key target opt_append resource_{field,file}
+export key target opt_append serialized_resources=$(declare -p resources)
 
 export -f walk get_json {has,get}_children
 
@@ -179,16 +190,16 @@ jaywalk - recursive json file accumulator
 
 =head1 SYNOPSIS
 
- bash jaywalk [options] <path> <json-target>
+ bash jaywalk [-hH] [-k <key>] [-a <k:v>]... <dir> <filename>
 
 =head1 DESCRIPTION
 
 This program accumulates JSON files dispersed throughout a directory
 structure into a single, nested JSON object.  Every subdirectory of
-<path> should contain a JSON file whose filename is <json-target>.
+<dir> should contain a JSON file whose filename is <filename>.
 
 My motivation in writing this script was to ease the process of editing
-a nested json file. Rather than editing one large file, I can edit
+a nested json file.  Rather than editing one large file, I can edit
 individual files while using shell commands to traverse the directory
 structure.  Thereafter, the individual files may be assembled into one
 large file with the hierarchical relationship preserved.
@@ -196,6 +207,23 @@ large file with the hierarchical relationship preserved.
 =head1 OPTIONS
 
 =over
+
+=item B<-h>
+
+Display a [h]elp message and exit.
+
+=item B<-H>
+
+Display this documentation in a pager and exit after the user quits.
+The documentation is divided into sections.  Each section header is
+matched with a search pattern, meaning that you can use navigation
+commands like C<n> and its counterpart C<N> to go to the next or
+previous section respectively.
+
+=item B<-k> I<KEY>
+
+This option changes the name of the [k]ey under which objects are
+nested. The default key is C<children>.
 
 =item B<-a> I<FIELD>:I<FILENAME>
 
@@ -209,26 +237,10 @@ C<.foo.bar.baz>.  Here is an example in context.
 
  bash jaywalk -a .image:portrait.jpg family-tree/ person.json
 
-Currently, only one resource file may be specified.  The last B<-a> on
-the command line overwrites previous ones.  Later, I intend to adapt the
-script to allow successive B<-a> options.
-
-=item B<-k> I<KEY>
-
-This option changes the name of the [k]ey under which objects are
-nested. The default key is I<children>.
-
-=item B<-h>
-
-Display a [h]elp message and exit.
-
-=item B<-H>
-
-Display this documentation in a pager and exit after the user quits.
-The documentation is divided into sections.  Each section header is
-matched with a search pattern, meaning that you can use navigation
-commands like C<n> and its counterpart C<N> to go to the next or
-previous section respectively.
+This option is cumulative and can be specified multiple times. Each
+unique I<FIELD> inserts a new file resource. If a duplicate I<FIELD> is
+provided, the last specified I<FILENAME> overwrites prior entries for
+that I<FIELD>.
 
 =back
 
