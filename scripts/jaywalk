@@ -5,7 +5,7 @@
 # DATE: Monday, August 11th, 2025
 # ABOUT: recursive json file accumulator
 # ORIGIN: https://github.com/zachary-krepelka/genealogy.git
-# UPDATED: Monday, July 27th, 2026 at 1:34 AM
+# UPDATED: Monday, July 27th, 2026 at 3:11 PM
 
 # Functions --------------------------------------------------------------- {{{1
 
@@ -21,7 +21,8 @@ usage() {
 	  bash $program [options] <path> <json-target>
 
 	Options:
-	  -k KEY  change name of recursive key
+	  -a FIELD:FILENAME  [a]ppend file resource to each object if present
+	  -k KEY             change name of [k]ey under which objects are nested
 
 	Documentation:
 	  -h  display this [h]elp message and exit
@@ -47,7 +48,7 @@ warn() {
 
 check_dependencies() {
 
-	local dependencies=(find jq less pod2text wc)
+	local dependencies=(find jq less pod2text realpath wc)
 
 	local cmd missing= code="$1"
 
@@ -69,10 +70,25 @@ walk() {
 	if has_children "$directory"
 	then
 		jq -s ".[0] + {\"$key\": .[1:]}" \
-			"$directory"/"$target" <(get_children "$directory")
+			<(get_json "$directory") \
+			<(get_children "$directory")
 	else
-		jq . "$directory/$target"
+		get_json "$directory"
 	fi
+}
+
+get_json() {
+	local directory="$1"
+
+	if $opt_append && test -f "$directory/$resource_file"
+	then
+		resource_path="$(realpath "$directory/$resource_file")"
+		filter="$resource_field = \"$resource_path\""
+	else
+		filter=.
+	fi
+
+	jq "$filter" "$directory/$target"
 }
 
 has_children() {
@@ -85,13 +101,18 @@ get_children() {
 
 # Command-line Option Parsing --------------------------------------------- {{{1
 
-declare opt_{help,doc,invalid}=false
+declare opt_{help,doc,append,invalid}=false
 
 key=children
 
-while getopts :Hhk: opt
+while getopts ':a:hHk:' opt
 do
 	case "$opt" in
+		a)
+			opt_append=true
+			resource_field="${OPTARG%:*}"
+			resource_file="${OPTARG##*:}"
+		;;
 		h) opt_help=true;;
 		H) opt_doc=true;;
 		k) key="$OPTARG";;
@@ -141,9 +162,9 @@ fi
 
 # Main Processing --------------------------------------------------------- {{{1
 
-export key target
+export key target opt_append resource_{field,file}
 
-export -f walk {has,get}_children
+export -f walk get_json {has,get}_children
 
 walk "$path" || error 4 "Something went wrong. You're on your own. Good Luck."
 
@@ -176,10 +197,26 @@ large file with the hierarchical relationship preserved.
 
 =over
 
+=item B<-a> I<FIELD>:I<FILENAME>
+
+This option [a]ppends a unique file resource I<FILENAME> to each JSON
+object as I<FIELD> if it is present.  That is, for each JSON file X, if
+I<FILENAME> exists in the same directory as X, then append the path of
+I<FILENAME> as a string under the key I<FIELD> of X before it is
+assimilated into the nested JSON structure.  Note that I<FIELD> is a jq
+path expression and therefore must begin wtih a dot, e.g.,
+C<.foo.bar.baz>.  Here is an example in context.
+
+ bash jaywalk -a .image:portrait.jpg family-tree/ person.json
+
+Currently, only one resource file may be specified.  The last B<-a> on
+the command line overwrites previous ones.  Later, I intend to adapt the
+script to allow successive B<-a> options.
+
 =item B<-k> I<KEY>
 
-Change the name of the [k]ey under which objects are nested. The default
-key is I<children>.
+This option changes the name of the [k]ey under which objects are
+nested. The default key is I<children>.
 
 =item B<-h>
 
