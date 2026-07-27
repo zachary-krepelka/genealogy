@@ -1,0 +1,13 @@
+{
+  "gender": "female",
+  "name": {
+    "first": "Katharine",
+    "middle": null,
+    "last": {
+      "maiden": "Wright",
+      "married": "Haskell"
+    },
+    "prefix": null,
+    "sufix": null
+  }
+}
