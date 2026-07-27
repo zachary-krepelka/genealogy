@@ -145,7 +145,7 @@ export key target
 
 export -f walk {has,get}_children
 
-walk "$path" || error 4 "Something went wrong. You're on you're own. Good Luck."
+walk "$path" || error 4 "Something went wrong. You're on your own. Good Luck."
 
 # Documentation ----------------------------------------------------------- {{{1
 
