@@ -5,7 +5,7 @@
 # DATE: Monday, August 11th, 2025
 # ABOUT: recursive json file accumulator
 # ORIGIN: https://github.com/zachary-krepelka/genealogy.git
-# UPDATED: Monday, July 27th, 2026 at 5:21 PM
+# UPDATED: Tuesday, July 28th, 2026 at 3:32 PM
 
 # Functions --------------------------------------------------------------- {{{1
 
@@ -18,11 +18,14 @@ usage() {
 	Recursive JSON File Accumulator
 
 	Usage:
-	  bash $program [-hH] [-k <key>] [-a <k:v>]... <dir> <filename>
+	  bash $program [-hH] [-k <key>] [-{a|A} <k:v>]... <dir> <filename>
 
 	Options:
 	  -k <key>             change name of [k]ey under which objects are nested
 	  -a <field:filename>  [a]ppend file resource to each object if present
+	  -A <field:filename>  [A]ppend sequential file resources to each object
+	                       Both sides must contain exactly one printf format
+	                       specifier for an unsigned integer, i.e., %u
 
 	Documentation:
 	  -h  display this [h]elp message and exit
@@ -48,7 +51,7 @@ warn() {
 
 check_dependencies() {
 
-	local dependencies=(find jq less pod2text realpath wc)
+	local dependencies=(find jq less pod2text realpath sed wc)
 
 	local cmd missing= code="$1"
 
@@ -101,7 +104,74 @@ get_json() {
 
 	test -z "$filter" && filter=.
 
-	jq "$filter" "$directory/$target"
+	append_sequential_resource "$directory" | jq "$filter"
+}
+
+# REFACTOR Possibly define functions `append_resources` plural and its helper
+# `append_resource` singular to handle standalone and sequential resources
+# together by checking a variable `resource_type` for each resource.  Try to
+# avoid unnecessary or repeated invocations of jq for better performance.
+
+append_sequential_resource() {
+
+	# TODO wrap this function in a plural form which iterates over a hash of
+	# sequential resources, i.e., define `append_sequential_resources`.
+
+	local directory="$1" index
+
+	index="$(get_largest_existing_index "$directory" "$seq_resource_file")"
+
+	if test "$index" -eq -1
+	then jq . "$directory/$target"
+	else _append_sequential_resource "$directory" "$index"
+	fi
+}
+
+_append_sequential_resource() {
+
+	local directory="$1" index="$2" filter= formatted_resource_{file,field} resource_path
+
+	if test $index -ge 0
+	then
+		formatted_resource_file="$(printf "$seq_resource_file" "$index")"
+		formatted_resource_field="$(printf "$seq_resource_field" "$index")"
+
+		resource_path="$directory/$formatted_resource_file"
+
+		if test -f "$resource_path"
+		then
+			resource_path="$(realpath "$resource_path")"
+			filter="$formatted_resource_field = \"$resource_path\""
+		else
+			filter=.
+		fi
+
+		jq "$filter" <(_append_sequential_resource "$directory" $((--index)))
+	else
+		jq . "$directory/$target"
+	fi
+}
+
+get_largest_existing_index() {
+
+	# HACK matches on a regex built from an arbitrary filename
+	# TODO refactor to remove pitfall `for file in $(find)`
+	# SEE  https://mywiki.wooledge.org/BashPitfalls
+
+	local directory="$1" filename="$2" largest=-1 file index
+
+	local re_find="${filename//%u/[0-9]+}"; re_find="${re_find/./\.}"
+	local re_sed="${filename//%u/\\([0-9]\\+\\)}"; re_sed="${re_sed/./\.}"
+
+	for file in $(find "$directory" -mindepth 1 -maxdepth 1 -type f -regex ".*/$re_find")
+	do
+		index=$((10#$(sed "s/$re_sed/\\1/" <<< "${file##*/}")))
+		if test $index -ge $largest
+		then largest=$index
+		fi
+	done
+
+	echo "$largest"
 }
 
 has_children() {
@@ -120,10 +190,17 @@ declare -A resources
 
 key=children
 
-while getopts ':a:hHk:' opt
+while getopts ':a:A:hHk:' opt
 do
 	case "$opt" in
 		a) opt_append=true; resources["${OPTARG%:*}"]="${OPTARG##*:}";;
+		A)
+			# TODO consolidate this into the resources hash
+			# track resource type as standalone or sequential
+
+			seq_resource_field="${OPTARG%:*}"
+			seq_resource_file="${OPTARG##*:}"
+		;;
 		h) opt_help=true;;
 		H) opt_doc=true;;
 		k) key="$OPTARG";;
@@ -173,9 +250,11 @@ fi
 
 # Main Processing --------------------------------------------------------- {{{1
 
-export key target opt_append serialized_resources=$(declare -p resources)
+# TODO wrap these at 80 columns
 
-export -f walk get_json {has,get}_children
+export key target opt_append serialized_resources=$(declare -p resources) seq_resource_{field,file}
+
+export -f walk get_json {has,get}_children {,_}append_sequential_resource get_largest_existing_index
 
 walk "$path" || error 4 "Something went wrong. You're on your own. Good Luck."
 
@@ -190,7 +269,7 @@ jaywalk - recursive json file accumulator
 
 =head1 SYNOPSIS
 
- bash jaywalk [-hH] [-k <key>] [-a <k:v>]... <dir> <filename>
+ bash jaywalk [-hH] [-k <key>] [-{a|A} <k:v>]... <dir> <filename>
 
 =head1 DESCRIPTION
 
@@ -233,7 +312,7 @@ I<FILENAME> exists in the same directory as X, then append the path of
 I<FILENAME> as a string under the key I<FIELD> of X before it is
 assimilated into the nested JSON structure.  Note that I<FIELD> is a jq
 path expression and therefore must begin wtih a dot, e.g.,
-C<.foo.bar.baz>.  Here is an example in context.
+C<.foo.bar[42].baz>.  Here is an example in context.
 
  bash jaywalk -a .image:portrait.jpg family-tree/ person.json
 
@@ -241,6 +320,29 @@ This option is cumulative and can be specified multiple times. Each
 unique I<FIELD> inserts a new file resource. If a duplicate I<FIELD> is
 provided, the last specified I<FILENAME> overwrites prior entries for
 that I<FIELD>.
+
+=item B<-A> I<FIELD>:I<FILENAME>
+
+This option [A]ppends unique, sequentially-named file resources (note
+the s) to each JSON object if they are present.  This option is like its
+lowercase counterpart but induces an implicit for loop over its
+parameters.  Namely, each half of the key-value pair must contain
+exactly one printf format specifier for an unsigned integer, that is,
+C<%u>.  As a matter of comparison, this
+
+ -A .images[%u]:portrait%u.jpg
+
+is approximately equivalent to this.
+
+ -a .images[0]:portrait0.jpg -a .images[1]:portrait1.jpg ...
+
+Here is a complete example in context.
+
+ bash jaywalk -A .image_at_every_year_of_life[%u]:age%u.jpg family-tree/ person.json
+
+Unlike B<-a>, this option is currently I<not> cumulative, but I intend
+to make it so in the future.  Right now, I am working through an
+initial, rough implementation of the feature.
 
 =back
 
