@@ -5,7 +5,7 @@
 # DATE: Monday, August 11th, 2025
 # ABOUT: recursive json file accumulator
 # ORIGIN: https://github.com/zachary-krepelka/genealogy.git
-# UPDATED: Wednesday, July 29th, 2026 at 2:07 PM
+# UPDATED: Wednesday, July 29th, 2026 at 7:06 PM
 
 # Functions --------------------------------------------------------------- {{{1
 
@@ -104,7 +104,12 @@ get_json() {
 
 	test -z "$filter" && filter=.
 
-	bind_sequential_resource "$directory" | jq "$filter"
+	if $opt_seq_bind
+	then
+		bind_sequential_resources "$directory" | jq "$filter"
+	else
+		jq "$filter" "$directory/$target"
+	fi
 }
 
 # REFACTOR Possibly define functions `bind_resources` plural and its helper
@@ -112,14 +117,26 @@ get_json() {
 # together by checking a variable `resource_type` for each resource.  Try to
 # avoid unnecessary or repeated invocations of jq for better performance.
 
-bind_sequential_resource() {
+bind_sequential_resources() {
 
-	# TODO wrap this function in a plural form which iterates over a hash of
-	# sequential resources, i.e., define `bind_sequential_resources`.
+	local directory="$1" seq_res_{field,file}
+
+	eval "$serialized_seq_resources"
+
+	for seq_res_field in "${!seq_resources[@]}"
+	do
+		seq_res_file="${seq_resources[$seq_res_field]}"
+
+		bind_sequential_resource "$directory"
+
+	done | jq -s 'reduce .[] as $binded_json ({}; . * $binded_json)'
+}
+
+bind_sequential_resource() {
 
 	local directory="$1" index
 
-	index="$(get_largest_existing_index "$directory" "$seq_resource_file")"
+	index="$(get_largest_existing_index "$directory" "$seq_res_file")"
 
 	if test "$index" -eq -1
 	then jq . "$directory/$target"
@@ -133,8 +150,8 @@ _bind_sequential_resource() {
 
 	if test $index -ge 0
 	then
-		formatted_resource_file="$(printf "$seq_resource_file" "$index")"
-		formatted_resource_field="$(printf "$seq_resource_field" "$index")"
+		formatted_resource_file="$(printf "$seq_res_file" "$index")"
+		formatted_resource_field="$(printf "$seq_res_field" "$index")"
 
 		resource_path="$directory/$formatted_resource_file"
 
@@ -184,23 +201,20 @@ get_children() {
 
 # Command-line Option Parsing --------------------------------------------- {{{1
 
-declare opt_{help,doc,bind,invalid}=false
+declare opt_{help,doc,{,seq_}bind,invalid}=false
 
-declare -A resources
+declare -A resources seq_resources
 
 key=children
+
+# TODO consolidate resources and seq_resources into one hash
+# track resource type as standalone or sequential
 
 while getopts ':b:B:hHk:' opt
 do
 	case "$opt" in
 		b) opt_bind=true; resources["${OPTARG%:*}"]="${OPTARG##*:}";;
-		B)
-			# TODO consolidate this into the resources hash
-			# track resource type as standalone or sequential
-
-			seq_resource_field="${OPTARG%:*}"
-			seq_resource_file="${OPTARG##*:}"
-		;;
+		B) opt_seq_bind=true; seq_resources["${OPTARG%:*}"]="${OPTARG##*:}";;
 		h) opt_help=true;;
 		H) opt_doc=true;;
 		k) key="$OPTARG";;
@@ -250,11 +264,20 @@ fi
 
 # Main Processing --------------------------------------------------------- {{{1
 
-# TODO wrap these at 80 columns
+export \
+	key \
+	target \
+	opt_{,seq_}bind \
+	serialized_resources=$(declare -p resources) \
+	serialized_seq_resources=$(declare -p seq_resources)
 
-export key target opt_bind serialized_resources=$(declare -p resources) seq_resource_{field,file}
-
-export -f walk get_json {has,get}_children {,_}bind_sequential_resource get_largest_existing_index
+export -f \
+	walk \
+	get_json \
+	{has,get}_children \
+	bind_sequential_resources \
+	{,_}bind_sequential_resource \
+	get_largest_existing_index
 
 walk "$path" || error 4 "Something went wrong. You're on your own. Good Luck."
 
@@ -357,9 +380,7 @@ Here is a complete example in context.
 
  bash jaywalk -B .image_at_every_year_of_life[%u]:age%u.jpg family-tree/ person.json
 
-Unlike B<-b>, this option is currently I<not> cumulative, but I intend
-to make it so in the future.  Right now, I am working through an
-initial, rough implementation of the feature.
+Like B<-b>, this option is cumulative.
 
 =back
 
