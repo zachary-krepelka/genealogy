@@ -5,7 +5,7 @@
 # DATE: Monday, August 11th, 2025
 # ABOUT: recursive json file accumulator
 # ORIGIN: https://github.com/zachary-krepelka/genealogy.git
-# UPDATED: Tuesday, July 28th, 2026 at 3:32 PM
+# UPDATED: Wednesday, July 29th, 2026 at 2:07 PM
 
 # Functions --------------------------------------------------------------- {{{1
 
@@ -15,17 +15,17 @@ usage() {
 	local message
 
 	IFS= read -r -d '' message <<-EOF || true
-	Recursive JSON File Accumulator
+	Recursive JSON File Accumulator with Resource Binding
 
 	Usage:
-	  bash $program [-hH] [-k <key>] [-{a|A} <k:v>]... <dir> <filename>
+	  bash $program [-hH] [-k <key>] [-{b|B} <fld:res>]... <dir> <filename>
 
 	Options:
-	  -k <key>             change name of [k]ey under which objects are nested
-	  -a <field:filename>  [a]ppend file resource to each object if present
-	  -A <field:filename>  [A]ppend sequential file resources to each object
-	                       Both sides must contain exactly one printf format
-	                       specifier for an unsigned integer, i.e., %u
+	  -k <key>      change name of [k]ey under which objects are nested
+	  -b <fld:res>  [b]ind file resource to each object if present
+	  -B <fld:res>  [B]ind sequential file resources to each object
+	                Both sides must contain exactly one printf format
+	                specifier for an unsigned integer, i.e., %u
 
 	Documentation:
 	  -h  display this [h]elp message and exit
@@ -83,7 +83,7 @@ walk() {
 get_json() {
 	local directory="$1" filter= resource_{field,file,path}
 
-	if $opt_append
+	if $opt_bind
 	then
 		eval "$serialized_resources"
 
@@ -104,18 +104,18 @@ get_json() {
 
 	test -z "$filter" && filter=.
 
-	append_sequential_resource "$directory" | jq "$filter"
+	bind_sequential_resource "$directory" | jq "$filter"
 }
 
-# REFACTOR Possibly define functions `append_resources` plural and its helper
-# `append_resource` singular to handle standalone and sequential resources
+# REFACTOR Possibly define functions `bind_resources` plural and its helper
+# `bind_resource` singular to handle standalone and sequential resources
 # together by checking a variable `resource_type` for each resource.  Try to
 # avoid unnecessary or repeated invocations of jq for better performance.
 
-append_sequential_resource() {
+bind_sequential_resource() {
 
 	# TODO wrap this function in a plural form which iterates over a hash of
-	# sequential resources, i.e., define `append_sequential_resources`.
+	# sequential resources, i.e., define `bind_sequential_resources`.
 
 	local directory="$1" index
 
@@ -123,11 +123,11 @@ append_sequential_resource() {
 
 	if test "$index" -eq -1
 	then jq . "$directory/$target"
-	else _append_sequential_resource "$directory" "$index"
+	else _bind_sequential_resource "$directory" "$index"
 	fi
 }
 
-_append_sequential_resource() {
+_bind_sequential_resource() {
 
 	local directory="$1" index="$2" filter= formatted_resource_{file,field} resource_path
 
@@ -146,7 +146,7 @@ _append_sequential_resource() {
 			filter=.
 		fi
 
-		jq "$filter" <(_append_sequential_resource "$directory" $((--index)))
+		jq "$filter" <(_bind_sequential_resource "$directory" $((--index)))
 	else
 		jq . "$directory/$target"
 	fi
@@ -184,17 +184,17 @@ get_children() {
 
 # Command-line Option Parsing --------------------------------------------- {{{1
 
-declare opt_{help,doc,append,invalid}=false
+declare opt_{help,doc,bind,invalid}=false
 
 declare -A resources
 
 key=children
 
-while getopts ':a:A:hHk:' opt
+while getopts ':b:B:hHk:' opt
 do
 	case "$opt" in
-		a) opt_append=true; resources["${OPTARG%:*}"]="${OPTARG##*:}";;
-		A)
+		b) opt_bind=true; resources["${OPTARG%:*}"]="${OPTARG##*:}";;
+		B)
 			# TODO consolidate this into the resources hash
 			# track resource type as standalone or sequential
 
@@ -252,9 +252,9 @@ fi
 
 # TODO wrap these at 80 columns
 
-export key target opt_append serialized_resources=$(declare -p resources) seq_resource_{field,file}
+export key target opt_bind serialized_resources=$(declare -p resources) seq_resource_{field,file}
 
-export -f walk get_json {has,get}_children {,_}append_sequential_resource get_largest_existing_index
+export -f walk get_json {has,get}_children {,_}bind_sequential_resource get_largest_existing_index
 
 walk "$path" || error 4 "Something went wrong. You're on your own. Good Luck."
 
@@ -265,11 +265,11 @@ walk "$path" || error 4 "Something went wrong. You're on your own. Good Luck."
 
 =head1 NAME
 
-jaywalk - recursive json file accumulator
+jaywalk - recursive json file accumulator with resource binding
 
 =head1 SYNOPSIS
 
- bash jaywalk [-hH] [-k <key>] [-{a|A} <k:v>]... <dir> <filename>
+ bash jaywalk [-hH] [-k <key>] [-{b|B} <fld:res>]... <dir> <filename>
 
 =head1 DESCRIPTION
 
@@ -277,13 +277,25 @@ This program accumulates JSON files dispersed throughout a directory
 structure into a single, nested JSON object.  Every subdirectory of
 <dir> should contain a JSON file whose filename is <filename>.
 
-My motivation in writing this script was to ease the process of editing
-a nested json file.  Rather than editing one large file, I can edit
+Options are provided for binding file resources to each JSON object in
+the tree.  Every subdirectory of <dir> should optionally contain a file
+whose filename is <res>.  The filepath of each <res> will be bound to
+the <fld> key of each JSON object <filename> provided that <res> exists
+in the same directory as <filename>.
+
+My motive for writing this script was to ease the process of editing a
+nested JSON file.  Rather than editing one large file, I can edit
 individual files while using shell commands to traverse the directory
 structure.  Thereafter, the individual files may be assembled into one
-large file with the hierarchical relationship preserved.
+large file with the hierarchical relationship preserved.  Individual
+objects within the tree are more readily targeted this way.  For
+example, by using this script in conjunction with the command C<find
+-exec vim +>, Vim macros may be executed over each object in the tree
+for complex editing operations.
 
 =head1 OPTIONS
+
+The following options are available.
 
 =over
 
@@ -304,43 +316,48 @@ previous section respectively.
 This option changes the name of the [k]ey under which objects are
 nested. The default key is C<children>.
 
-=item B<-a> I<FIELD>:I<FILENAME>
+=item B<-b> I<FIELD>:I<RESOURCE>
 
-This option [a]ppends a unique file resource I<FILENAME> to each JSON
-object as I<FIELD> if it is present.  That is, for each JSON file X, if
-I<FILENAME> exists in the same directory as X, then append the path of
-I<FILENAME> as a string under the key I<FIELD> of X before it is
+This option [b]inds a unique file I<RESOURCE> to each JSON object as
+I<FIELD> if it is present.  That is, for each targeted JSON file X, if
+I<RESOURCE> exists in the same directory as X, then bind the path of
+I<RESOURCE> as a string to the key I<FIELD> of X before it is
 assimilated into the nested JSON structure.  Note that I<FIELD> is a jq
-path expression and therefore must begin wtih a dot, e.g.,
+path expression and therefore must begin with a dot, e.g.,
 C<.foo.bar[42].baz>.  Here is an example in context.
 
- bash jaywalk -a .image:portrait.jpg family-tree/ person.json
+ bash jaywalk -b .image:portrait.jpg family-tree/ person.json
 
 This option is cumulative and can be specified multiple times. Each
 unique I<FIELD> inserts a new file resource. If a duplicate I<FIELD> is
-provided, the last specified I<FILENAME> overwrites prior entries for
+provided, the last specified I<RESOURCE> overwrites prior entries for
 that I<FIELD>.
 
-=item B<-A> I<FIELD>:I<FILENAME>
+In regard to the use of a colon character in either the key or the
+value, note that the key is read greedily, whereas the value is read
+lazily.  This means that the jq path expression I<FIELD> may contain as
+many colons as needed, whereas the I<RESOURCE> cannot have colons.
 
-This option [A]ppends unique, sequentially-named file resources (note
-the s) to each JSON object if they are present.  This option is like its
+=item B<-B> I<FIELD>:I<RESOURCE>
+
+This option [B]inds unique, sequentially-named file resources (note the
+s) to each JSON object if they are present.  This option is like its
 lowercase counterpart but induces an implicit for loop over its
 parameters.  Namely, each half of the key-value pair must contain
 exactly one printf format specifier for an unsigned integer, that is,
 C<%u>.  As a matter of comparison, this
 
- -A .images[%u]:portrait%u.jpg
+ -B .images[%u]:portrait%u.jpg
 
 is approximately equivalent to this.
 
- -a .images[0]:portrait0.jpg -a .images[1]:portrait1.jpg ...
+ -b .images[0]:portrait0.jpg -b .images[1]:portrait1.jpg ...
 
 Here is a complete example in context.
 
- bash jaywalk -A .image_at_every_year_of_life[%u]:age%u.jpg family-tree/ person.json
+ bash jaywalk -B .image_at_every_year_of_life[%u]:age%u.jpg family-tree/ person.json
 
-Unlike B<-a>, this option is currently I<not> cumulative, but I intend
+Unlike B<-b>, this option is currently I<not> cumulative, but I intend
 to make it so in the future.  Right now, I am working through an
 initial, rough implementation of the feature.
 
