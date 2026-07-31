@@ -5,7 +5,7 @@
 # DATE: Monday, August 11th, 2025
 # ABOUT: recursive json file accumulator
 # ORIGIN: https://github.com/zachary-krepelka/genealogy.git
-# UPDATED: Wednesday, July 29th, 2026 at 7:06 PM
+# UPDATED: Friday, July 31st, 2026 at 6:54 PM
 
 # Functions --------------------------------------------------------------- {{{1
 
@@ -51,7 +51,7 @@ warn() {
 
 check_dependencies() {
 
-	local dependencies=(find jq less pod2text realpath sed wc)
+	local dependencies=(find jq less paste pod2text realpath sed wc)
 
 	local cmd missing= code="$1"
 
@@ -81,92 +81,48 @@ walk() {
 }
 
 get_json() {
-	local directory="$1" filter= resource_{field,file,path}
 
-	if $opt_bind
-	then
-		eval "$serialized_resources"
+	eval "$serialized_resources; $serialized_resource_types"
 
-		for resource_field in "${!resources[@]}"
-		do
-			resource_file="${resources[$resource_field]}"
-			resource_path="$directory/$resource_file"
+	{
 
-			if test -f "$resource_path"
-			then
-				resource_path="$(realpath "$resource_path")"
-				filter+="$resource_field = \"$resource_path\" | "
-			fi
-		done
+	echo .
 
-		filter="${filter% | }"
-	fi
-
-	test -z "$filter" && filter=.
-
-	if $opt_seq_bind
-	then
-		bind_sequential_resources "$directory" | jq "$filter"
-	else
-		jq "$filter" "$directory/$target"
-	fi
-}
-
-# REFACTOR Possibly define functions `bind_resources` plural and its helper
-# `bind_resource` singular to handle standalone and sequential resources
-# together by checking a variable `resource_type` for each resource.  Try to
-# avoid unnecessary or repeated invocations of jq for better performance.
-
-bind_sequential_resources() {
-
-	local directory="$1" seq_res_{field,file}
-
-	eval "$serialized_seq_resources"
-
-	for seq_res_field in "${!seq_resources[@]}"
+	for res_field in "${!resources[@]}"
 	do
-		seq_res_file="${seq_resources[$seq_res_field]}"
+		res_file="${resources[$res_field]}"
+		res_type="${resource_types[$res_field]}"
 
-		bind_sequential_resource "$directory"
+		case "$res_type" in
+			standalone)
+				res_path="$directory/$res_file"
 
-	done | jq -s 'reduce .[] as $binded_json ({}; . * $binded_json)'
-}
+				if test -f "$res_path"
+				then
+					res_path="$(realpath "$res_path")"
+					echo "$res_field = \"$res_path\""
+				fi
+			;;
+			sequential)
+				max=$(get_largest_existing_index "$directory" "$res_file")
 
-bind_sequential_resource() {
+				for ((i = 0; i <= max; i++))
+				do
+					fmt_res_field="$(printf "$res_field" $i)"
+					fmt_res_file="$(printf "$res_file" $i)"
+					    res_path="$directory/$fmt_res_file"
 
-	local directory="$1" index
+					if test -f "$res_path"
+					then
+						res_path="$(realpath "$res_path")"
+						echo "$fmt_res_field = \"$res_path\""
+					fi
+				done
+			;;
+		esac
+	done
 
-	index="$(get_largest_existing_index "$directory" "$seq_res_file")"
-
-	if test "$index" -eq -1
-	then jq . "$directory/$target"
-	else _bind_sequential_resource "$directory" "$index"
-	fi
-}
-
-_bind_sequential_resource() {
-
-	local directory="$1" index="$2" filter= formatted_resource_{file,field} resource_path
-
-	if test $index -ge 0
-	then
-		formatted_resource_file="$(printf "$seq_res_file" "$index")"
-		formatted_resource_field="$(printf "$seq_res_field" "$index")"
-
-		resource_path="$directory/$formatted_resource_file"
-
-		if test -f "$resource_path"
-		then
-			resource_path="$(realpath "$resource_path")"
-			filter="$formatted_resource_field = \"$resource_path\""
-		else
-			filter=.
-		fi
-
-		jq "$filter" <(_bind_sequential_resource "$directory" $((--index)))
-	else
-		jq . "$directory/$target"
-	fi
+	} | paste -sd\| | jq -f /dev/stdin "$directory/$target"
 }
 
 get_largest_existing_index() {
@@ -201,20 +157,18 @@ get_children() {
 
 # Command-line Option Parsing --------------------------------------------- {{{1
 
-declare opt_{help,doc,{,seq_}bind,invalid}=false
+declare opt_{help,doc,invalid}=false
 
-declare -A resources seq_resources
+declare -A resource{,_type}s
 
 key=children
-
-# TODO consolidate resources and seq_resources into one hash
-# track resource type as standalone or sequential
 
 while getopts ':b:B:hHk:' opt
 do
 	case "$opt" in
-		b) opt_bind=true; resources["${OPTARG%:*}"]="${OPTARG##*:}";;
-		B) opt_seq_bind=true; seq_resources["${OPTARG%:*}"]="${OPTARG##*:}";;
+		b|B) resources["${OPTARG%:*}"]="${OPTARG##*:}";;&
+		b) resource_types["${OPTARG%:*}"]=standalone;;
+		B) resource_types["${OPTARG%:*}"]=sequential;;
 		h) opt_help=true;;
 		H) opt_doc=true;;
 		k) key="$OPTARG";;
@@ -267,16 +221,13 @@ fi
 export \
 	key \
 	target \
-	opt_{,seq_}bind \
 	serialized_resources=$(declare -p resources) \
-	serialized_seq_resources=$(declare -p seq_resources)
+	serialized_resource_types=$(declare -p resource_types)
 
 export -f \
 	walk \
 	get_json \
 	{has,get}_children \
-	bind_sequential_resources \
-	{,_}bind_sequential_resource \
 	get_largest_existing_index
 
 walk "$path" || error 4 "Something went wrong. You're on your own. Good Luck."
