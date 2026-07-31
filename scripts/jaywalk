@@ -5,9 +5,11 @@
 # DATE: Monday, August 11th, 2025
 # ABOUT: recursive json file accumulator
 # ORIGIN: https://github.com/zachary-krepelka/genealogy.git
-# UPDATED: Friday, July 31st, 2026 at 6:54 PM
+# UPDATED: Friday, July 31st, 2026 at 7:48 PM
 
 # Functions --------------------------------------------------------------- {{{1
+
+# for command-line infrastructure {{{2
 
 program="${0##*/}"
 
@@ -67,6 +69,9 @@ check_dependencies() {
 	fi
 }
 
+
+# for core logic {{{2
+
 walk() {
 	local directory="$1"
 
@@ -78,6 +83,14 @@ walk() {
 	else
 		get_json "$directory"
 	fi
+}
+
+has_children() {
+	test $(find "$1" -mindepth 1 -maxdepth 1 -type d | wc -l) -ne 0
+}
+
+get_children() {
+	find "$1" -mindepth 1 -maxdepth 1 -type d -exec bash -c "walk '{}'" \;
 }
 
 get_json() {
@@ -147,13 +160,7 @@ get_largest_existing_index() {
 	echo "$largest"
 }
 
-has_children() {
-	test $(find "$1" -mindepth 1 -maxdepth 1 -type d | wc -l) -ne 0
-}
-
-get_children() {
-	find "$1" -mindepth 1 -maxdepth 1 -type d -exec bash -c "walk '{}'" \;
-}
+# }}}
 
 # Command-line Option Parsing --------------------------------------------- {{{1
 
