@@ -5,7 +5,7 @@
 # DATE: Monday, August 11th, 2025
 # ABOUT: recursive json file accumulator
 # ORIGIN: https://github.com/zachary-krepelka/genealogy.git
-# UPDATED: Friday, July 31st, 2026 at 11:00 PM
+# UPDATED: Friday, July 31st, 2026 at 11:40 PM
 
 # Functions --------------------------------------------------------------- {{{1
 
@@ -44,11 +44,6 @@ error() {
 	local code="$1" message="$2"
 	echo "$program: error: $message" >&2
 	exit "$code"
-}
-
-warn() {
-	local message="$1"
-	echo "$program: warning: $message" >&2
 }
 
 check_dependencies() {
@@ -200,22 +195,15 @@ then
 	exit 0
 fi
 
-if $opt_invalid
-then
-	warn "unknown options: -$invalid_opt"
-fi
+$opt_invalid && error 2 "unknown options: -$invalid_opt"
 
 # Argument Handling ------------------------------------------------------- {{{1
 
-if test $# -ne 2
-then error 2 'exactly two arguments are required'
-fi
+test $# -ne 2 && error 3 'exactly two arguments are required'
 
 path="${1%/}" target="$2"
 
-if ! test -d "$path"
-then error 3 '<path> is not a directory'
-fi
+test -d "$path" || error 4 '<path> is not a directory'
 
 # Main Processing --------------------------------------------------------- {{{1
 
@@ -231,7 +219,7 @@ export -f \
 	{has,get}_children \
 	get_largest_existing_index
 
-walk "$path" || error 4 "Something went wrong. You're on your own. Good Luck."
+walk "$path" || error 5 "Something went wrong. You're on your own. Good Luck."
 
 # Documentation ----------------------------------------------------------- {{{1
 
@@ -408,11 +396,13 @@ The program exits with the following status codes.
 
 =item 1 if dependencies are missing
 
-=item 2 if the wrong number of positional arguments are passed
+=item 2 if an unknown option is supplied
 
-=item 3 if the first positional argument is not a directory
+=item 3 if the wrong number of positional arguments are passed
 
-=item 4 for some other unforeseen error
+=item 4 if the first positional argument is not a directory
+
+=item 5 for some other unforeseen error
 
 =back
 
