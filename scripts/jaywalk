@@ -5,7 +5,7 @@
 # DATE: Monday, August 11th, 2025
 # ABOUT: recursive json file accumulator
 # ORIGIN: https://github.com/zachary-krepelka/genealogy.git
-# UPDATED: Friday, July 31st, 2026 at 11:40 PM
+# UPDATED: Sunday, August 9th, 2026 at 2:01 AM
 
 # Functions --------------------------------------------------------------- {{{1
 
@@ -68,9 +68,13 @@ check_dependencies() {
 
 walk() {
 	local directory="$1"
+
 	if has_children
-	then jq -s ".[0] + {\"$key\": .[1:]}" <(get_json) <(get_children)
-	else get_json
+	then
+		jq --slurp --arg key "$key" \
+			'.[0] + {$key: .[1:]}' <(get_json) <(get_children)
+	else
+		get_json
 	fi
 }
 
