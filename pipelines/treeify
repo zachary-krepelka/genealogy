@@ -1,0 +1,5 @@
+mkdir -p deliverables
+bash scripts/jaywalk $(find data -mindepth 2 -type d | fzf) bio.json |
+	jq -rf scripts/treeify > deliverables/tree.tex &&
+	latexmk -pdf -cd deliverables/tree.tex &&
+	latexmk -c   -cd deliverables/tree.tex

@@ -1,0 +1,237 @@
+#!/usr/bin/env -S jq -rf
+
+# FILENAME: treeify
+# AUTHOR: Zachary Krepelka
+# DATE: Thursday, June 18th, 2026
+# ABOUT: a wrapper for the LaTeX genealogytree package
+# ORIGIN: https://github.com/zachary-krepelka/genealogy.git
+# UPDATED: Tuesday, August 18th, 2026 at 11:07 PM
+
+def config:
+	{
+		"pretty_print": true
+	};
+
+def get_gender:
+	.gender // "neuter";
+
+def get_full_name:
+	[
+	.name,
+	.name.prefix?,
+	.name.first?,
+	.name.middle?,
+	.name.last?,
+	.name.last?.maiden?,
+	.name.last?.married?,
+	.name.suffix?
+	] | map(strings) | join(" ");
+
+def gen_node_options:
+	get_gender;
+
+def gen_node_content:
+	get_full_name;
+
+def format_node_syntax(type_chr; options_str; content_str):
+	"\(type_chr)[\(options_str)]{\(content_str)}";
+
+def gen_node(node_type):
+	format_node_syntax(node_type; gen_node_options; gen_node_content);
+
+def gen_branch(depth; fam_type; head_of_fam; rest_of_fam):
+	if config.pretty_print then
+		"\t" * depth as $indentation |
+			"\n\($indentation)\(fam_type) {" +
+			"\n\($indentation)\t\(head_of_fam)\(rest_of_fam)" +
+			"\n\($indentation)}" |
+			if depth == 0 then .[1:] end
+	else
+		"\(fam_type){\(head_of_fam)\(rest_of_fam)}"
+	end;
+
+def gen_leaf(depth; node_def):
+	if config.pretty_print then
+		"\n\("\t" * depth)\(node_def)"
+	else
+		node_def
+	end;
+
+def treeify:
+	def treeify(depth):
+		if .children then
+			gen_branch(depth; "child"; gen_node("g");
+				.children | map(treeify(depth + 1)) | join(" ")
+			)
+		else
+			gen_leaf(depth; gen_node("c"))
+		end;
+	treeify(0);
+
+def main:
+	[
+		"\\documentclass{standalone}",
+		"\\usepackage[all]{genealogytree}",
+		"\\begin{document}",
+		"\\begin{genealogypicture}[template=signpost]",
+		treeify,
+		"\\end{genealogypicture}",
+		"\\end{document}"
+
+	] | join("\n");
+
+main
+
+# =pod
+#
+# =head1 NAME
+#
+# treeify - a wrapper for the LaTeX genealogytree package
+#
+# =head1 SYNOPSIS
+#
+# =head2 Usage
+#
+#  jq -rf treeify family-tree.json > family-tree.tex
+#
+# =head2 Documentation
+#
+#  sed -n '/^# =pod/,/^# =cut/{s/# \?//;p}' treeify \
+#  | pod2text \
+#  | less -Sp '^[^ ].*$' +k
+#
+# =head1 DESCRIPTION
+#
+# This program generates LaTeX source code from a custom JSON structure that,
+# when compiled, renders a family tree diagram.  In particular, this program
+# generates a descendancy chart which shows every descendant of a chosen
+# progenitor.  Support for other diagram types like ancestry charts may be added
+# in the future.  The LaTeX genealogytree package is used, and this program
+# outputs to its syntax.  The input is a JSON file of the following
+# (Backus-Naur-like) form.  See the example section if this is unclear.
+#
+#  | PERSON ::= {
+#  |   "name": NAME
+#  |   (, "gender": GENDER)?
+#  |   (, "children": [ PERSON... ])?
+#  | }
+#  |
+#  | GENDER := "male" or "female" or null
+#  |
+#  | NAME ::= STRING or
+#  | {
+#  |   "first":  STRING,
+#  |   "middle": STRING,
+#  |   "last":   STRING or
+#  |   {
+#  |     "maiden":  STRING,
+#  |     "married": STRING
+#  |   },
+#  |   "prefix": STRING,
+#  |   "suffix": STRING
+#  | }
+#  |
+#  | STRING := "content" or null
+#
+# A design goal is to separate content from presentation.  The LaTeX
+# genealogytree package creates nice-looking diagrams, and I prefer it over
+# other genealogical diagramming software due to its WYSIWYM paradigm, but it
+# uses an obscure and inflexible syntax that is generally hard to deal with at
+# scale.  It would be better to store the data in a general-purpose,
+# industry-standard data exchange format, like JSON, and then render a genealogy
+# tree from that.  This would allow for extensibility of the dataset with
+# arbitrary information.  The intent is similar to that of Florian Brucker's
+# program C<gedcom2gtr>.  On that note, this program may have alternatively been
+# called C<json2gtr>.
+#
+# =head1 OPTIONS
+#
+# Currently, options are set by manually editing the source code.  By opening
+# this script in a text editor, the user will find a top-level function named
+# C<config> which returns an object literal.  The values in this object may be
+# changed to facilitate user preference configuration.
+#
+#  def config:
+#    {
+#      "pretty_print": true
+#    };
+#
+# =head1 EXAMPLES
+#
+# This example centers on the genealogy of the biblical Book of Genesis.
+#
+# =head2 Input
+#
+#     ,---- [ family-tree.json ]
+#   1 | {
+#   2 |   "name": "Adam",
+#   3 |   "gender": "male",
+#   4 |   "children": [
+#   5 |     {
+#   6 |       "name": "Cain",
+#   7 |       "gender": "male",
+#   8 |       "children": [
+#   9 |         {
+#  10 |           "name": "Enoch",
+#  11 |           "gender": "male"
+#  12 |         }
+#  13 |       ]
+#  14 |     },
+#  15 |     {
+#  16 |       "name": "Abel",
+#  17 |       "gender": "male"
+#  18 |     },
+#  19 |     {
+#  20 |       "name": "Seth",
+#  21 |       "gender": "male",
+#  22 |       "children": [
+#  23 |         {
+#  24 |           "name": "Enos",
+#  25 |           "gender": "male"
+#  26 |         }
+#  27 |       ]
+#  28 |     }
+#  29 |   ]
+#  30 | }
+#     `----
+#
+# =head2 Output
+#
+#     ,---- [ family-tree.tex ]
+#   1 | \documentclass{standalone}
+#   2 | \usepackage[all]{genealogytree}
+#   3 | \begin{document}
+#   4 | \begin{genealogypicture}[template=signpost]
+#   5 | child {
+#   6 |         g[male]{Adam}
+#   7 |         child {
+#   8 |                 g[male]{Cain}
+#   9 |                 c[male]{Enoch}
+#  10 |         }
+#  11 |         c[male]{Abel}
+#  12 |         child {
+#  13 |                 g[male]{Seth}
+#  14 |                 c[male]{Enos}
+#  15 |         }
+#  16 | }
+#  17 | \end{genealogypicture}
+#  18 | \end{document}
+#     `----
+#
+# =head1 AUTHOR
+#
+# Zachary Krepelka L<https://github.com/zachary-krepelka>
+#
+# =head1 SEE ALSO
+#
+# =over
+#
+# =item L<https://github.com/T-F-S/genealogytree>
+#
+# =item L<https://github.com/torfsen/gedcom2gtr>
+#
+# =back
+#
+# =cut
+
+# vim: tw=80 ts=2 sw=2 noet
