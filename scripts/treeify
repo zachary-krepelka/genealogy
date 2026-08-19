@@ -116,7 +116,7 @@ main
 #  |   (, "children": [ PERSON... ])?
 #  | }
 #  |
-#  | GENDER := "male" or "female" or null
+#  | GENDER ::= "male" or "female" or null
 #  |
 #  | NAME ::= STRING or
 #  | {
@@ -131,7 +131,7 @@ main
 #  |   "suffix": STRING
 #  | }
 #  |
-#  | STRING := "content" or null
+#  | STRING ::= "content" or null
 #
 # A design goal is to separate content from presentation.  The LaTeX
 # genealogytree package creates nice-looking diagrams, and I prefer it over
