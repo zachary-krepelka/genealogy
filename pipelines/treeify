@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 opt_debug=false
 
 while getopts :d opt
