@@ -5,7 +5,7 @@
 # DATE: Thursday, June 18th, 2026
 # ABOUT: a wrapper for the LaTeX genealogytree package
 # ORIGIN: https://github.com/zachary-krepelka/genealogy.git
-# UPDATED: Tuesday, August 18th, 2026 at 11:07 PM
+# UPDATED: Thursday, August 20th, 2026 at 7:38 PM
 
 def config:
 	{
@@ -61,7 +61,7 @@ def treeify:
 	def treeify(depth):
 		if .children then
 			gen_branch(depth; "child"; gen_node("g");
-				.children | map(treeify(depth + 1)) | join(" ")
+				add(.children[] | treeify(depth + 1))
 			)
 		else
 			gen_leaf(depth; gen_node("c"))
