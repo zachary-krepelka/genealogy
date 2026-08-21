@@ -1,5 +1,25 @@
+opt_debug=false
+
+while getopts :d opt
+do
+	case "$opt" in
+		d) opt_debug=true;;
+	esac
+done
+
+inspect() {
+	if $opt_debug
+	then vipe
+	else cat
+	fi
+}
+
+progenitor=$(find data -mindepth 2 -type d | fzf -d / --with-nth 2..)
+
 mkdir -p deliverables
-bash scripts/jaywalk $(find data -mindepth 2 -type d | fzf) bio.json |
-	jq -rf scripts/treeify > deliverables/tree.tex &&
+
+bash scripts/jaywalk $progenitor bio.json |
+	jq -rf scripts/treeify |
+	inspect > deliverables/tree.tex &&
 	latexmk -pdf -cd deliverables/tree.tex &&
 	latexmk -c   -cd deliverables/tree.tex
