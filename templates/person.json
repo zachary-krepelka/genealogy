@@ -9,7 +9,7 @@
       "married": null
     },
     "prefix": null,
-    "sufix": null
+    "suffix": null
   },
   "partners": [
     {
@@ -22,7 +22,7 @@
           "married": null
         },
         "prefix": null,
-        "sufix": null
+        "suffix": null
       }
     }
   ]
