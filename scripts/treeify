@@ -5,7 +5,7 @@
 # DATE: Thursday, June 18th, 2026
 # ABOUT: a wrapper for the LaTeX genealogytree package
 # ORIGIN: https://github.com/zachary-krepelka/genealogy.git
-# UPDATED: Friday, August 21st, 2026 at 8:13 PM
+# UPDATED: Friday, August 21st, 2026 at 10:21 PM
 
 def config:
 	{
@@ -82,7 +82,7 @@ def treeify(depth):
 										$consanguineal_partner.children[]?
 										| select(.affine_parent_index == $affinal_partner.index)
 										| treeify(depth + if $is_first_union then 1 else 2 end)
-									)
+									) // ""
 								)
 							#
 						)
