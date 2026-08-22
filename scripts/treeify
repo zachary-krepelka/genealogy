@@ -5,11 +5,12 @@
 # DATE: Thursday, June 18th, 2026
 # ABOUT: a wrapper for the LaTeX genealogytree package
 # ORIGIN: https://github.com/zachary-krepelka/genealogy.git
-# UPDATED: Thursday, August 20th, 2026 at 7:38 PM
+# UPDATED: Friday, August 21st, 2026 at 8:13 PM
 
 def config:
 	{
-		"pretty_print": true
+		"pretty_print": true,
+		"exclude_partners": false
 	};
 
 def get_gender:
@@ -39,17 +40,6 @@ def format_node_syntax(type_chr; options_str; content_str):
 def gen_node(node_type):
 	format_node_syntax(node_type; gen_node_options; gen_node_content);
 
-def gen_branch(depth; fam_type; head_of_fam; rest_of_fam):
-	if config.pretty_print then
-		"\t" * depth as $indentation |
-			"\n\($indentation)\(fam_type) {" +
-			"\n\($indentation)\t\(head_of_fam)\(rest_of_fam)" +
-			"\n\($indentation)}" |
-			if depth == 0 then .[1:] end
-	else
-		"\(fam_type){\(head_of_fam)\(rest_of_fam)}"
-	end;
-
 def gen_leaf(depth; node_def):
 	if config.pretty_print then
 		"\n\("\t" * depth)\(node_def)"
@@ -57,16 +47,95 @@ def gen_leaf(depth; node_def):
 		node_def
 	end;
 
-def treeify:
-	def treeify(depth):
-		if .children then
-			gen_branch(depth; "child"; gen_node("g");
-				add(.children[] | treeify(depth + 1))
-			)
+def gen_branch(fam_type; is_phantom; depth; head_of_fam; rest_of_fam):
+	if is_phantom then
+		add(gen_leaf(depth; head_of_fam), rest_of_fam)
+	else
+		if config.pretty_print then
+			"\t" * depth as $indentation |
+				"\n\($indentation)\(fam_type) {" +
+				"\n\($indentation)\t\(head_of_fam)\(rest_of_fam)" +
+				"\n\($indentation)}" |
+				if depth == 0 then .[1:] end
 		else
-			gen_leaf(depth; gen_node("c"))
-		end;
-	treeify(0);
+			"\(fam_type){\(head_of_fam)\(rest_of_fam)}"
+		end
+	end;
+
+def with_indices:
+	to_entries | map(.value + {index: .key});
+
+def treeify(depth):
+	if .partners and (config.exclude_partners | not) then # 1, 2
+		gen_branch("child"; false; depth;
+			gen_node("g");
+			. as $consanguineal_partner
+			| add(
+					.partners
+					| foreach with_indices[] as $affinal_partner
+						(
+							null;
+							$affinal_partner.index == 0 as $is_first_union
+							| gen_branch("union"; $is_first_union; depth + 1;
+									$affinal_partner | gen_node("p");
+									add(
+										$consanguineal_partner.children[]?
+										| select(.affine_parent_index == $affinal_partner.index)
+										| treeify(depth + if $is_first_union then 1 else 2 end)
+									)
+								)
+							#
+						)
+					#
+				)
+			#
+		)
+	elif .children then # 3
+		gen_branch("child"; false; depth;
+			gen_node("g");
+			add(.children[] | treeify(depth + 1))
+		)
+	else # 4
+		gen_leaf(depth; gen_node("c"))
+	end;
+
+# ------------------------------------------------------------------------------
+# COMMENTARY on the implementation of treeify/1
+# ------------------------------------------------------------------------------
+
+# To exhaust possibilities, we map code paths (marked above) to a truth table.
+
+#  PARTNERS  CHILDREN  CODE PATH  RECURSION
+#  yes       yes       1          non-terminal
+#  yes       no        2          terminal
+#  no        yes       3          non-terminal
+#  no        no        4          terminal
+
+# With a heavy bias towards biological relationships, we view partnership as a
+# precondition for having children, so we expect most cases to be handled in
+# code path one-two.  Code path three is largely supplied for circumstances
+# where the affine parent is unknown.  This comes up often.  The identity of a
+# parent may be completely unknown, or more often the case, it may not be known
+# offhand in casual conversation when acquiring information from loosely
+# connected family members.
+
+# We should take care to note circumstances where a child is included in one
+# code path but excluded in another.  When a consanguineal individual has a list
+# of partners but children which are not bound to one of those partners, (e.g.,
+# .affine_parent_index is missing, null, or out of bounds for some of the
+# children), then those children will be excluded in code path one-two but not
+# in code path three.  Adoptees and step-children, if not bound to two parents,
+# are subject to the same behavior.  That is, adoptions by couples are okay, but
+# adoptions by a single individual are problematic.
+
+# Ideally, code path one-two should handle these "leftover" children.  However,
+# this is not straightforward because if children were prioritized over partners
+# instead, then non-childbearing partners would be leftover, so it is not enough
+# to group by / iterate over the partners or the children alone.
+
+# This is left as a TODO.
+
+# ------------------------------------------------------------------------------
 
 def main:
 	[
@@ -74,7 +143,7 @@ def main:
 		"\\usepackage[all]{genealogytree}",
 		"\\begin{document}",
 		"\\begin{genealogypicture}[template=signpost]",
-		treeify,
+		treeify(0),
 		"\\end{genealogypicture}",
 		"\\end{document}"
 
@@ -114,6 +183,8 @@ main
 #  |   "name": NAME
 #  |   (, "gender": GENDER)?
 #  |   (, "children": [ PERSON... ])?
+#  |   (, "partners": [ PERSON... ])?
+#  |   (, "affine_parent_index": NUMBER)?
 #  | }
 #  |
 #  | GENDER ::= "male" or "female" or null
@@ -130,8 +201,6 @@ main
 #  |   "prefix": STRING,
 #  |   "suffix": STRING
 #  | }
-#  |
-#  | STRING ::= "content" or null
 #
 # A design goal is to separate content from presentation.  The LaTeX
 # genealogytree package creates nice-looking diagrams, and I prefer it over
@@ -153,12 +222,17 @@ main
 #
 #  def config:
 #    {
-#      "pretty_print": true
+#      "pretty_print": true,
+#      "exclude_partners": false
 #    };
 #
 # =head1 EXAMPLES
 #
-# This example centers on the genealogy of the biblical Book of Genesis.
+# This example centers on the genealogy of the biblical Book of Genesis.  Note
+# that while the canonical Bible has Eve as Adam's first and only wife,
+# extra-biblical folklore retains that Eve was the successor of Adam's estranged
+# wife Lilith who come first.  We include her in this example to showcase how
+# our program handle's multiple consecutive partnerships.
 #
 # =head2 Input
 #
@@ -166,33 +240,46 @@ main
 #   1 | {
 #   2 |   "name": "Adam",
 #   3 |   "gender": "male",
-#   4 |   "children": [
+#   4 |   "partners": [
 #   5 |     {
-#   6 |       "name": "Cain",
-#   7 |       "gender": "male",
-#   8 |       "children": [
-#   9 |         {
-#  10 |           "name": "Enoch",
-#  11 |           "gender": "male"
-#  12 |         }
-#  13 |       ]
-#  14 |     },
+#   6 |       "name": "Lilith",
+#   7 |       "gender": "female"
+#   8 |     },
+#   9 |     {
+#  10 |       "name": "Eve",
+#  11 |       "gender": "female"
+#  12 |     }
+#  13 |   ],
+#  14 |   "children": [
 #  15 |     {
-#  16 |       "name": "Abel",
-#  17 |       "gender": "male"
-#  18 |     },
-#  19 |     {
-#  20 |       "name": "Seth",
-#  21 |       "gender": "male",
-#  22 |       "children": [
-#  23 |         {
-#  24 |           "name": "Enos",
-#  25 |           "gender": "male"
-#  26 |         }
-#  27 |       ]
-#  28 |     }
-#  29 |   ]
-#  30 | }
+#  16 |       "name": "Cain",
+#  17 |       "gender": "male",
+#  18 |       "affine_parent_index": 1,
+#  19 |       "children": [
+#  20 |         {
+#  21 |           "name": "Enoch",
+#  22 |           "gender": "male"
+#  23 |         }
+#  24 |       ]
+#  25 |     },
+#  26 |     {
+#  27 |       "name": "Abel",
+#  28 |       "gender": "male",
+#  29 |       "affine_parent_index": 1
+#  30 |     },
+#  31 |     {
+#  32 |       "name": "Seth",
+#  33 |       "gender": "male",
+#  34 |       "affine_parent_index": 1,
+#  35 |       "children": [
+#  36 |         {
+#  37 |           "name": "Enos",
+#  38 |           "gender": "male"
+#  39 |         }
+#  40 |       ]
+#  41 |     }
+#  42 |   ]
+#  43 | }
 #     `----
 #
 # =head2 Output
@@ -204,18 +291,22 @@ main
 #   4 | \begin{genealogypicture}[template=signpost]
 #   5 | child {
 #   6 |         g[male]{Adam}
-#   7 |         child {
-#   8 |                 g[male]{Cain}
-#   9 |                 c[male]{Enoch}
-#  10 |         }
-#  11 |         c[male]{Abel}
-#  12 |         child {
-#  13 |                 g[male]{Seth}
-#  14 |                 c[male]{Enos}
-#  15 |         }
-#  16 | }
-#  17 | \end{genealogypicture}
-#  18 | \end{document}
+#   7 |         p[female]{Lilith}
+#   8 |         union {
+#   9 |                 p[female]{Eve}
+#  10 |                 child {
+#  11 |                         g[male]{Cain}
+#  12 |                         c[male]{Enoch}
+#  13 |                 }
+#  14 |                 c[male]{Abel}
+#  15 |                 child {
+#  16 |                         g[male]{Seth}
+#  17 |                         c[male]{Enos}
+#  18 |                 }
+#  19 |         }
+#  20 | }
+#  21 | \end{genealogypicture}
+#  22 | \end{document}
 #     `----
 #
 # =head1 AUTHOR

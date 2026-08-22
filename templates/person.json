@@ -1,4 +1,5 @@
 {
+  "affine_parent_index": 0,
   "gender": null,
   "name": {
     "first": null,
@@ -9,5 +10,20 @@
     },
     "prefix": null,
     "sufix": null
-  }
+  },
+  "partners": [
+    {
+      "gender": null,
+      "name": {
+        "first": null,
+        "middle": null,
+        "last": {
+          "maiden": null,
+          "married": null
+        },
+        "prefix": null,
+        "sufix": null
+      }
+    }
+  ]
 }
