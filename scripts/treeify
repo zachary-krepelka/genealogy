@@ -231,7 +231,7 @@ main
 # This example centers on the genealogy of the biblical Book of Genesis.  Note
 # that while the canonical Bible has Eve as Adam's first and only wife,
 # extra-biblical folklore retains that Eve was the successor of Adam's estranged
-# wife Lilith who come first.  We include her in this example to showcase how
+# wife Lilith who came first.  We include her in this example to showcase how
 # our program handle's multiple consecutive partnerships.
 #
 # =head2 Input
