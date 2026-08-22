@@ -1,4 +1,5 @@
 {
+  "affine_parent_index": 0,
   "gender": "female",
   "name": {
     "first": "Leontine",
@@ -8,6 +9,18 @@
       "married": "Jameson"
     },
     "prefix": null,
-    "sufix": null
-  }
+    "suffix": null
+  },
+  "partners": [
+    {
+      "gender": "male",
+      "name": {
+        "first": "John",
+        "middle": "Hulbert",
+        "last": "Jameson",
+        "prefix": null,
+        "suffix": null
+      }
+    }
+  ]
 }

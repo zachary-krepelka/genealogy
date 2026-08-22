@@ -1,10 +1,39 @@
 {
+  "affine_parent_index": 0,
   "gender": "male",
   "name": {
     "first": "Herbert",
     "middle": "Abeckett",
     "last": "Wright",
     "prefix": null,
-    "sufix": null
-  }
+    "suffix": null
+  },
+  "partners": [
+    {
+      "gender": "female",
+      "name": {
+        "first": "Irene",
+        "middle": "Matilda",
+        "last": {
+          "maiden": "May",
+          "married": "Wright"
+        },
+        "prefix": null,
+        "suffix": null
+      }
+    },
+    {
+      "gender": "female",
+      "name": {
+        "first": "Edna",
+        "middle": "Lily",
+        "last": {
+          "maiden": "Tischhauser",
+          "married": "Wright"
+        },
+        "prefix": null,
+        "suffix": null
+      }
+    }
+  ]
 }

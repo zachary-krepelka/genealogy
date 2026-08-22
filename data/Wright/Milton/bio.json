@@ -1,10 +1,26 @@
 {
+  "affine_parent_index": null,
   "gender": "male",
   "name": {
     "first": "Milton",
     "middle": null,
     "last": "Wright",
     "prefix": null,
-    "sufix": null
-  }
+    "suffix": null
+  },
+  "partners": [
+    {
+      "gender": "female",
+      "name": {
+        "first": "Susan",
+        "middle": "Catherine",
+        "last": {
+          "maiden": "Koerner",
+          "married": "Wright"
+        },
+        "prefix": null,
+        "suffix": null
+      }
+    }
+  ]
 }

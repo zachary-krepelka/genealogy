@@ -1,4 +1,5 @@
 {
+  "affine_parent_index": 0,
   "gender": "female",
   "name": {
     "first": "Catherine",
@@ -8,6 +9,6 @@
       "married": null
     },
     "prefix": null,
-    "sufix": null
+    "suffix": null
   }
 }
