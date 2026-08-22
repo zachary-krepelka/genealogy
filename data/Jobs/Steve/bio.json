@@ -1,0 +1,39 @@
+{
+  "affine_parent_index": null,
+  "gender": "male",
+  "name": {
+    "first": "Steven",
+    "middle": "Paul",
+    "last": "Jobs",
+    "prefix": null,
+    "sufix": null
+  },
+  "partners": [
+    {
+      "gender": "female",
+      "name": {
+        "first": "Chrisann",
+        "middle": null,
+        "last": {
+          "maiden": "Brennan",
+          "married": null
+        },
+        "prefix": null,
+        "suffix": null
+      }
+    },
+    {
+      "gender": "female",
+      "name": {
+        "first": "Laurene",
+        "middle": null,
+        "last": {
+          "maiden": "Powell",
+          "married": "Jobs"
+        },
+        "prefix": null,
+        "suffix": null
+      }
+    }
+  ]
+}

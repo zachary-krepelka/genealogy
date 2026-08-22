@@ -1,0 +1,26 @@
+{
+  "affine_parent_index": 1,
+  "gender": "male",
+  "name": {
+    "first": "Reed",
+    "middle": "Paul",
+    "last": "Jobs",
+    "prefix": null,
+    "sufix": null
+  },
+  "partners": [
+    {
+      "gender": "female",
+      "name": {
+        "first": "Elena",
+        "middle": "Swanson",
+          "last": {
+            "maiden": "McCallister",
+            "married": "Jobs"
+          },
+          "prefix": null,
+          "suffix": null
+      }
+    }
+  ]
+}

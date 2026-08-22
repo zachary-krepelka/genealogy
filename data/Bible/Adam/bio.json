@@ -1,0 +1,14 @@
+{
+  "gender": "male",
+  "name": "Adam",
+  "partners": [
+    {
+      "gender": "female",
+      "name": "Lilith"
+    },
+    {
+      "gender": "female",
+      "name": "Eve"
+    }
+  ]
+}
