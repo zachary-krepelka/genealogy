@@ -80,7 +80,7 @@ def treeify(depth):
 									$affinal_partner | gen_node("p");
 									add(
 										$consanguineal_partner.children[]?
-										| select(.affine_parent_index == $affinal_partner.index)
+										| select(.parent_index == $affinal_partner.index)
 										| treeify(depth + if $is_first_union then 1 else 2 end)
 									) // ""
 								)
@@ -122,11 +122,11 @@ def treeify(depth):
 # We should take care to note circumstances where a child is included in one
 # code path but excluded in another.  When a consanguineal individual has a list
 # of partners but children which are not bound to one of those partners, (e.g.,
-# .affine_parent_index is missing, null, or out of bounds for some of the
-# children), then those children will be excluded in code path one-two but not
-# in code path three.  Adoptees and step-children, if not bound to two parents,
-# are subject to the same behavior.  That is, adoptions by couples are okay, but
-# adoptions by a single individual are problematic.
+# .parent_index is missing, null, or out of bounds for some of the children),
+# then those children will be excluded in code path one-two but not in code path
+# three.  Adoptees and step-children, if not bound to two parents, are subject
+# to the same behavior.  That is, adoptions by couples are okay, but adoptions
+# by a single individual are problematic.
 
 # Ideally, code path one-two should handle these "leftover" children.  However,
 # this is not straightforward because if children were prioritized over partners
@@ -184,7 +184,7 @@ main
 #  |   (, "gender": GENDER)?
 #  |   (, "children": [ PERSON... ])?
 #  |   (, "partners": [ PERSON... ])?
-#  |   (, "affine_parent_index": NUMBER)?
+#  |   (, "parent_index": NUMBER)?
 #  | }
 #  |
 #  | GENDER ::= "male" or "female" or null
@@ -254,7 +254,7 @@ main
 #  15 |     {
 #  16 |       "name": "Cain",
 #  17 |       "gender": "male",
-#  18 |       "affine_parent_index": 1,
+#  18 |       "parent_index": 1,
 #  19 |       "children": [
 #  20 |         {
 #  21 |           "name": "Enoch",
@@ -265,12 +265,12 @@ main
 #  26 |     {
 #  27 |       "name": "Abel",
 #  28 |       "gender": "male",
-#  29 |       "affine_parent_index": 1
+#  29 |       "parent_index": 1
 #  30 |     },
 #  31 |     {
 #  32 |       "name": "Seth",
 #  33 |       "gender": "male",
-#  34 |       "affine_parent_index": 1,
+#  34 |       "parent_index": 1,
 #  35 |       "children": [
 #  36 |         {
 #  37 |           "name": "Enos",
