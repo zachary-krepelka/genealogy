@@ -5,7 +5,7 @@
 # DATE: Thursday, June 18th, 2026
 # ABOUT: a wrapper for the LaTeX genealogytree package
 # ORIGIN: https://github.com/zachary-krepelka/genealogy.git
-# UPDATED: Friday, August 21st, 2026 at 10:21 PM
+# UPDATED: Sunday, August 23rd, 2026 at 11:17 PM
 
 def config:
 	{
@@ -82,7 +82,7 @@ def treeify(depth):
 										$consanguineal_partner.children[]?
 										| select(.parent_index == $affinal_partner.index)
 										| treeify(depth + if $is_first_union then 1 else 2 end)
-									) // ""
+									) // "" # occurs when unions are childless
 								)
 							#
 						)
@@ -137,17 +137,35 @@ def treeify(depth):
 
 # ------------------------------------------------------------------------------
 
-def main:
-	[
-		"\\documentclass{standalone}",
-		"\\usepackage[all]{genealogytree}",
-		"\\begin{document}",
-		"\\begin{genealogypicture}[template=signpost]",
-		treeify(0),
-		"\\end{genealogypicture}",
-		"\\end{document}"
+# If I was a sensible person, I would have named this function
+# `get_max_depth`, but instead we are using nautical metaphors.
 
-	] | join("\n");
+def plumb_by(f):
+	def plumb(line): # as in the phrase "to plumb the depths of"
+		if f then
+			f[] | plumb(line + 1) # the sailor is lowering the line
+		else
+			line # the plummet touches the ocean floor
+		end;
+	[plumb(0)] | max;
+
+def main:
+	plumb_by(.children) as $depth
+	| add(
+		"\\documentclass{standalone}\n",
+		"\\usepackage[all]{genealogytree}\n",
+		"\\begin{document}\n",
+		"\\begin{tikzpicture}\n",
+		"\\genealogytree[\n",
+		"	template=signpost,\n",
+		"	insert phantom for childless families,\n",
+		"	insert for childless families level limit = -\($depth)\n",
+		"]{\n",
+		treeify(0),
+		"}\n",
+		"\\end{tikzpicture}\n",
+		"\\end{document}"
+	);
 
 main
 
@@ -288,25 +306,30 @@ main
 #   1 | \documentclass{standalone}
 #   2 | \usepackage[all]{genealogytree}
 #   3 | \begin{document}
-#   4 | \begin{genealogypicture}[template=signpost]
-#   5 | child {
-#   6 |         g[male]{Adam}
-#   7 |         p[female]{Lilith}
-#   8 |         union {
-#   9 |                 p[female]{Eve}
-#  10 |                 child {
-#  11 |                         g[male]{Cain}
-#  12 |                         c[male]{Enoch}
-#  13 |                 }
-#  14 |                 c[male]{Abel}
+#   4 | \begin{tikzpicture}
+#   5 | \genealogytree[
+#   6 |         template=signpost,
+#   7 |         insert phantom for childless families,
+#   8 |         insert for childless families level limit = -2
+#   9 | ]{
+#  10 | child {
+#  11 |         g[male]{Adam}
+#  12 |         p[female]{Lilith}
+#  13 |         union {
+#  14 |                 p[female]{Eve}
 #  15 |                 child {
 #  16 |                         g[male]{Seth}
 #  17 |                         c[male]{Enos}
 #  18 |                 }
-#  19 |         }
-#  20 | }
-#  21 | \end{genealogypicture}
-#  22 | \end{document}
+#  19 |                 child {
+#  20 |                         g[male]{Cain}
+#  21 |                         c[male]{Enoch}
+#  22 |                 }
+#  23 |                 c[male]{Abel}
+#  24 |         }
+#  25 | }}
+#  26 | \end{tikzpicture}
+#  27 | \end{document}
 #     `----
 #
 # =head1 AUTHOR
