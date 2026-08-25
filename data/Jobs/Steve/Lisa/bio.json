@@ -11,10 +11,21 @@
     "prefix": null,
     "sufix": null
   },
+  "events": {
+    "birth": {
+      "date": "1978-05-17"
+    }
+  },
   "partners": [
     {
       "gender": "male",
-      "name": "Bill"
+      "name": {
+        "first": "Bill",
+        "middle": null,
+        "last": "Morein",
+        "prefix": null,
+        "suffix": null
+      }
     }
   ]
 }

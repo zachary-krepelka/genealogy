@@ -10,5 +10,13 @@
     },
     "prefix": null,
     "suffix": null
+  },
+  "events": {
+    "birth": {
+      "date": "1870-02-24"
+    },
+    "death": {
+      "date": "1870-03-14"
+    }
   }
 }

@@ -11,6 +11,11 @@
     "prefix": null,
     "sufix": null
   },
+  "events": {
+    "birth": {
+      "date": "1998-07-09"
+    }
+  },
   "partners": [
     {
       "gender": "male",
@@ -20,6 +25,11 @@
         "last": "Charles",
         "prefix": null,
         "suffix": null
+      },
+      "events": {
+        "birth": {
+          "date": "1999-07-15"
+        }
       }
     }
   ]

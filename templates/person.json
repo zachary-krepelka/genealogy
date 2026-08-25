@@ -1,5 +1,6 @@
 {
   "parent_index": 0,
+  "sibling_index": null,
   "gender": null,
   "name": {
     "first": null,
@@ -10,6 +11,14 @@
     },
     "prefix": null,
     "suffix": null
+  },
+  "events": {
+    "birth": {
+      "date": null
+    },
+    "death": {
+      "date": null
+    }
   },
   "partners": [
     {
@@ -23,6 +32,14 @@
         },
         "prefix": null,
         "suffix": null
+      },
+      "events": {
+        "birth": {
+          "date": null
+        },
+        "death": {
+          "date": null
+        }
       }
     }
   ]

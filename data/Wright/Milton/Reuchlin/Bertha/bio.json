@@ -11,6 +11,14 @@
     "prefix": null,
     "suffix": null
   },
+  "events": {
+    "birth": {
+      "date": "1896-12-25"
+    },
+    "death": {
+      "date": "1977-04-30"
+    }
+  },
   "partners": [
     {
       "gender": "male",
@@ -20,6 +28,14 @@
         "last": "Steeper",
         "prefix": null,
         "suffix": null
+      },
+      "events": {
+        "birth": {
+          "date": "1892-09-30"
+        },
+        "death": {
+          "date": "1979-09-15"
+        }
       }
     }
   ]

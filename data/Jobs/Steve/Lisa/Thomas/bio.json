@@ -1,5 +1,11 @@
 {
   "parent_index": 0,
   "gender": "male",
-  "name": "Thomas"
+  "name": {
+    "first": "Thomas",
+    "middle": null,
+    "last": "Morein",
+    "prefix": null,
+    "suffix": null
+  }
 }

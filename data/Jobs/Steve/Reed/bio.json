@@ -8,6 +8,11 @@
     "prefix": null,
     "sufix": null
   },
+  "events": {
+    "birth": {
+      "date": "1991-09-22"
+    }
+  },
   "partners": [
     {
       "gender": "female",

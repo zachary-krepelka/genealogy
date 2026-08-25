@@ -8,18 +8,34 @@
     "prefix": null,
     "suffix": "Sr."
   },
+  "events": {
+    "birth": {
+      "date": "1892-11-08"
+    },
+    "death": {
+      "date": "1961-12-02"
+    }
+  },
   "partners": [
     {
       "gender": "female",
       "name": {
         "first": "Ann",
-        "middle": null,
+        "middle": "Margaret",
         "last": {
           "maiden": "Grosvenor",
           "married": "Wright"
         },
         "prefix": null,
         "suffix": null
+      },
+      "events": {
+        "birth": {
+          "date": "1895-04-22"
+        },
+        "death": {
+          "date": "1959-05-24"
+        }
       }
     }
   ]

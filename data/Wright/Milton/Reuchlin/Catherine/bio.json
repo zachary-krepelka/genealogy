@@ -10,5 +10,13 @@
     },
     "prefix": null,
     "suffix": null
+  },
+  "events": {
+    "birth": {
+      "date": "1887-01-23"
+    },
+    "death": {
+      "date": "1891"
+    }
   }
 }

@@ -8,6 +8,14 @@
     "prefix": null,
     "suffix": null
   },
+  "events": {
+    "birth": {
+      "date": "1901-07-11"
+    },
+    "death": {
+      "date": "1988-04-13"
+    }
+  },
   "partners": [
     {
       "gender": "female",
@@ -20,6 +28,14 @@
         },
         "prefix": null,
         "suffix": null
+      },
+      "events": {
+        "birth": {
+          "date": "1902-07-11"
+        },
+        "death": {
+          "date": "1999-03-05"
+        }
       }
     }
   ]

@@ -10,5 +10,10 @@
     },
     "prefix": null,
     "sufix": null
+  },
+  "events": {
+    "birth": {
+      "date": "1995-08-19"
+    }
   }
 }

@@ -8,6 +8,14 @@
     "prefix": null,
     "sufix": null
   },
+  "events": {
+    "birth": {
+      "date": "1995-02-24"
+    },
+    "death": {
+      "date": "2011-10-05"
+    }
+  },
   "partners": [
     {
       "gender": "female",
@@ -20,6 +28,11 @@
         },
         "prefix": null,
         "suffix": null
+      },
+      "events": {
+        "birth": {
+          "date": "1954-09-29"
+        }
       }
     },
     {
@@ -33,6 +46,11 @@
         },
         "prefix": null,
         "suffix": null
+      },
+      "events": {
+        "birth": {
+          "date": "1963-11-06"
+        }
       }
     }
   ]
