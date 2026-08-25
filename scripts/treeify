@@ -5,7 +5,7 @@
 # DATE: Thursday, June 18th, 2026
 # ABOUT: a wrapper for the LaTeX genealogytree package
 # ORIGIN: https://github.com/zachary-krepelka/genealogy.git
-# UPDATED: Sunday, August 23rd, 2026 at 11:17 PM
+# UPDATED: Monday, August 24th, 2026 at 11:46 PM
 
 def config:
 	{
@@ -65,6 +65,9 @@ def gen_branch(fam_type; is_phantom; depth; head_of_fam; rest_of_fam):
 def with_indices:
 	to_entries | map(.value + {index: .key});
 
+def get_children:
+	.children | sort_by(.sibling_index, .events.birth.date)?;
+
 def treeify(depth):
 	if .partners and (config.exclude_partners | not) then # 1, 2
 		gen_branch("child"; false; depth;
@@ -79,7 +82,8 @@ def treeify(depth):
 							| gen_branch("union"; $is_first_union; depth + 1;
 									$affinal_partner | gen_node("p");
 									add(
-										$consanguineal_partner.children[]?
+										$consanguineal_partner
+										| get_children[]?
 										| select(.parent_index == $affinal_partner.index)
 										| treeify(depth + if $is_first_union then 1 else 2 end)
 									) // "" # occurs when unions are childless
@@ -93,7 +97,7 @@ def treeify(depth):
 	elif .children then # 3
 		gen_branch("child"; false; depth;
 			gen_node("g");
-			add(.children[] | treeify(depth + 1))
+			add(get_children[] | treeify(depth + 1))
 		)
 	else # 4
 		gen_leaf(depth; gen_node("c"))
@@ -200,12 +204,12 @@ main
 #  | PERSON ::= {
 #  |   "name": NAME
 #  |   (, "gender": GENDER)?
+#  |   (, "events": EVENTS)?
 #  |   (, "children": [ PERSON... ])?
 #  |   (, "partners": [ PERSON... ])?
 #  |   (, "parent_index": NUMBER)?
+#  |   (, "sibling_index": NUMBER)?
 #  | }
-#  |
-#  | GENDER ::= "male" or "female" or null
 #  |
 #  | NAME ::= STRING or
 #  | {
@@ -218,6 +222,18 @@ main
 #  |   },
 #  |   "prefix": STRING,
 #  |   "suffix": STRING
+#  | }
+#  |
+#  | GENDER ::= "male" or "female" or null
+#  |
+#  | EVENTS ::= {
+#  |   "birth": {
+#  |     "date": STRING_IN_ISO_DATE_FORMAT
+#  |   }
+#  |   (, "death": {
+#  |        "date": STRING_IN_ISO_DATE_FORMAT
+#  |      }
+#  |   )?
 #  | }
 #
 # A design goal is to separate content from presentation.  The LaTeX
