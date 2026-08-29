@@ -5,13 +5,17 @@
 # DATE: Thursday, June 18th, 2026
 # ABOUT: a wrapper for the LaTeX genealogytree package
 # ORIGIN: https://github.com/zachary-krepelka/genealogy.git
-# UPDATED: Monday, August 24th, 2026 at 11:46 PM
+# UPDATED: Friday, August 28th, 2026 at 11:53 PM
 
 def config:
 	{
+		"template": "signpost",
 		"pretty_print": true,
 		"exclude_partners": false
 	};
+
+def haspath(candidate):
+	IN(paths; candidate);
 
 def get_gender:
 	.gender // "neuter";
@@ -28,14 +32,70 @@ def get_full_name:
 	.name.suffix?
 	] | map(strings) | join(" ");
 
+def get_processing:
+	{
+		"signpost":                  "literal",
+		"database pole":             "structured",
+		"database poleportrait":     "structured",
+		"database portrait":         "structured",
+		"database traditional":      "structured",
+		"database sideways":         "structured",
+		"database sidewaysportrait": "structured",
+	}[config.template];
+
 def gen_node_options:
-	get_gender;
+	{
+		literal: get_gender,
+		structured: ""
+	}[get_processing];
 
 def gen_node_content:
-	get_full_name;
+	{
+		literal: get_full_name,
+		structured: [
+			{
+				name: get_full_name,
+				sex: get_gender,
+			},
+			if haspath(["events", "birth", "date"]) then
+				{ birth: [.events.birth.date, ""] }
+			else
+				{}
+			end,
+			if haspath(["events", "death", "date"]) then
+				{ death: [.events.death.date, ""] }
+			else
+				{}
+			end
+		] | add
+	}[get_processing];
 
-def format_node_syntax(type_chr; options_str; content_str):
-	"\(type_chr)[\(options_str)]{\(content_str)}";
+def format_node_syntax(type_chr; options; content):
+
+	( options
+		| if type == "array" then
+				join(",")
+			end
+	) as $options_str |
+
+	( content
+		| if type == "object" then
+				to_entries
+				| map(
+						"\(.key)=\(
+							.value
+							| if type == "array" then
+									map("{\(.)}") | add
+								else
+									"{\(.)}"
+								end
+						)"
+					)
+				| join(",")
+			end
+	) as $content_str |
+
+	"\(type_chr)[\($options_str)]{\($content_str)}";
 
 def gen_node(node_type):
 	format_node_syntax(node_type; gen_node_options; gen_node_content);
@@ -161,7 +221,7 @@ def main:
 		"\\begin{document}\n",
 		"\\begin{tikzpicture}\n",
 		"\\genealogytree[\n",
-		"	template=signpost,\n",
+		"	template=\(config.template),\n",
 		"	insert phantom for childless families,\n",
 		"	insert for childless families level limit = -\($depth)\n",
 		"]{\n",
@@ -256,9 +316,30 @@ main
 #
 #  def config:
 #    {
+#      "template": "signpost",
 #      "pretty_print": true,
 #      "exclude_partners": false
 #    };
+#
+# The supported templates are listed below.
+#
+# =over
+#
+# =item signpost (default)
+#
+# =item database pole
+#
+# =item database poleportrait
+#
+# =item database portrait
+#
+# =item database traditional
+#
+# =item database sideways
+#
+# =item database sidewaysportrait
+#
+# =back
 #
 # =head1 EXAMPLES
 #
