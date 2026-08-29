@@ -2,12 +2,25 @@
 
 opt_debug=false
 
-while getopts :d opt
+while getopts :dh opt
 do
 	case "$opt" in
 		d) opt_debug=true;;
+		h) echo "usage: $0 [-d] [progenitor]"; exit 0;;
 	esac
 done
+
+shift $((OPTIND - 1))
+
+if test $# -eq 1
+then progenitor="$1"
+else progenitor="$(find data -mindepth 2 -type d | fzf -d / --with-nth 2..)"
+fi
+
+test -d "$progenitor" || {
+	echo "$0: error: non-directory argument" >&2
+	exit 1
+}
 
 inspect() {
 	if $opt_debug
@@ -16,8 +29,6 @@ inspect() {
 	fi
 }
 
-progenitor=$(find data -mindepth 2 -type d | fzf -d / --with-nth 2..)
-
 mkdir -p deliverables
 
 bash scripts/jaywalk $progenitor bio.json |
@@ -25,6 +36,8 @@ bash scripts/jaywalk $progenitor bio.json |
 	inspect > deliverables/tree.tex &&
 	latexmk -pdf -cd deliverables/tree.tex &&
 	latexmk -c   -cd deliverables/tree.tex
+
+# TODO possibly compile over standard input using pdflatex instead of latexmk
 
 # NOTE that if the debug flag is passed and the environment variable EDITOR is
 # set to vim, then the user can exit the pipeline prematurely by typing
