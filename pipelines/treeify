@@ -36,11 +36,9 @@ bash scripts/jaywalk \
                -B .partners[%u].image:node_p%u.jpg \
                        "$progenitor" bio.json |
 	jq -rf scripts/treeify |
-	inspect > deliverables/tree.tex &&
-	latexmk -pdf -cd deliverables/tree.tex &&
-	latexmk -c   -cd deliverables/tree.tex
-
-# TODO possibly compile over standard input using pdflatex instead of latexmk
+	inspect |
+	pdflatex -jobname=deliverables/tree &&
+	latexmk -c -cd deliverables/tree.pdf
 
 # NOTE that if the debug flag is passed and the environment variable EDITOR is
 # set to vim, then the user can exit the pipeline prematurely by typing
