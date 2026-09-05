@@ -5,12 +5,13 @@
 # DATE: Thursday, June 18th, 2026
 # ABOUT: a wrapper for the LaTeX genealogytree package
 # ORIGIN: https://github.com/zachary-krepelka/genealogy.git
-# UPDATED: Friday, September 4th, 2026 at 9:17 PM
+# UPDATED: Saturday, September 5th, 2026 at 12:36 AM
 
 def config:
 	{
 		"template": "signpost",
 		"pretty_print": true,
+		"reduce_output": false, # if the template supports it
 		"display_images": true, # if the template supports it
 		"exclude_partners": false
 	};
@@ -35,8 +36,19 @@ def get_full_name:
 
 def get_template:
 	config.template
+	| . as $base_template
 	| if config.display_images and (endswith("pole") or endswith("sideways")) then
 			add(., "portrait")
+		end
+	| {
+			"signpost":             false,
+			"database pole":        true,
+			"database portrait":    true,
+			"database traditional": true,
+			"database sideways":    true
+		} as $supports_reduction
+	| if config.reduce_output and $supports_reduction[$base_template] then
+			add(., " reduced")
 		end;
 
 def get_processing:
@@ -228,6 +240,7 @@ def main:
 	| add(
 		"\\documentclass{standalone}\n",
 		"\\usepackage[all]{genealogytree}\n",
+		"\\usepackage{lmodern}\n",
 		"\\begin{document}\n",
 		"\\begin{tikzpicture}\n",
 		"\\genealogytree[\n",
@@ -329,6 +342,7 @@ main
 #    {
 #      "template": "signpost",
 #      "pretty_print": true,
+#      "reduce_output": false,
 #      "display_images": true,
 #      "exclude_partners": false
 #    };
@@ -337,17 +351,35 @@ main
 #
 # =over
 #
-# =item signpost (default)
+# =item * signpost (default)
 #
-# =item database pole
+# =item * database pole
 #
-# =item database portrait
+# =item * database portrait
 #
-# =item database traditional
+# =item * database traditional
 #
-# =item database sideways
+# =item * database sideways
 #
 # =back
+#
+# Note that variations of base templates are handled using other configuration
+# parameters.  For example, the genealogytree LaTeX package provides a base
+# template C<database pole> with three adjacent templates:
+#
+# =over
+#
+# =item * database pole reduced
+#
+# =item * database poleportrait
+#
+# =item * database poleportrait reduced
+#
+# =back
+#
+# In our program, the user need only supply the base template.  The correct
+# variation of the base template is chosen depending on the values of the
+# configuration parameters C<reduce_output> and C<display_images>.
 #
 # =head1 EXAMPLES
 #
@@ -410,31 +442,32 @@ main
 #     ,---- [ family-tree.tex ]
 #   1 | \documentclass{standalone}
 #   2 | \usepackage[all]{genealogytree}
-#   3 | \begin{document}
-#   4 | \begin{tikzpicture}
-#   5 | \genealogytree[
-#   6 |         template=signpost,
-#   7 |         insert phantom for childless families,
-#   8 |         insert for childless families level limit = -2
-#   9 | ]{
-#  10 | child {
-#  11 |         g[male]{Adam}
-#  12 |         p[female]{Lilith}
-#  13 |         union {
-#  14 |                 p[female]{Eve}
-#  15 |                 child {
-#  16 |                         g[male]{Seth}
-#  17 |                         c[male]{Enos}
-#  18 |                 }
-#  19 |                 child {
-#  20 |                         g[male]{Cain}
-#  21 |                         c[male]{Enoch}
-#  22 |                 }
-#  23 |                 c[male]{Abel}
-#  24 |         }
-#  25 | }}
-#  26 | \end{tikzpicture}
-#  27 | \end{document}
+#   3 | \usepackage{lmodern}
+#   4 | \begin{document}
+#   5 | \begin{tikzpicture}
+#   6 | \genealogytree[
+#   7 |         template=signpost,
+#   8 |         insert phantom for childless families,
+#   9 |         insert for childless families level limit = -2
+#  10 | ]{
+#  11 | child {
+#  12 |         g[male]{Adam}
+#  13 |         p[female]{Lilith}
+#  14 |         union {
+#  15 |                 p[female]{Eve}
+#  16 |                 child {
+#  17 |                         g[male]{Seth}
+#  18 |                         c[male]{Enos}
+#  19 |                 }
+#  20 |                 child {
+#  21 |                         g[male]{Cain}
+#  22 |                         c[male]{Enoch}
+#  23 |                 }
+#  24 |                 c[male]{Abel}
+#  25 |         }
+#  26 | }}
+#  27 | \end{tikzpicture}
+#  28 | \end{document}
 #     `----
 #
 # =head1 AUTHOR
