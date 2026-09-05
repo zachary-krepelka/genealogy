@@ -31,7 +31,10 @@ inspect() {
 
 mkdir -p deliverables
 
-bash scripts/jaywalk $progenitor bio.json |
+bash scripts/jaywalk \
+               -b .image:node_g.jpg \
+               -B .partners[%u].image:node_p%u.jpg \
+                       "$progenitor" bio.json |
 	jq -rf scripts/treeify |
 	inspect > deliverables/tree.tex &&
 	latexmk -pdf -cd deliverables/tree.tex &&

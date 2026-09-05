@@ -5,12 +5,13 @@
 # DATE: Thursday, June 18th, 2026
 # ABOUT: a wrapper for the LaTeX genealogytree package
 # ORIGIN: https://github.com/zachary-krepelka/genealogy.git
-# UPDATED: Friday, August 28th, 2026 at 11:53 PM
+# UPDATED: Friday, September 4th, 2026 at 9:17 PM
 
 def config:
 	{
 		"template": "signpost",
 		"pretty_print": true,
+		"display_images": true, # if the template supports it
 		"exclude_partners": false
 	};
 
@@ -32,15 +33,19 @@ def get_full_name:
 	.name.suffix?
 	] | map(strings) | join(" ");
 
+def get_template:
+	config.template
+	| if config.display_images and (endswith("pole") or endswith("sideways")) then
+			add(., "portrait")
+		end;
+
 def get_processing:
 	{
-		"signpost":                  "literal",
-		"database pole":             "structured",
-		"database poleportrait":     "structured",
-		"database portrait":         "structured",
-		"database traditional":      "structured",
-		"database sideways":         "structured",
-		"database sidewaysportrait": "structured",
+		"signpost":             "literal",
+		"database pole":        "structured",
+		"database portrait":    "structured",
+		"database traditional": "structured",
+		"database sideways":    "structured",
 	}[config.template];
 
 def gen_node_options:
@@ -64,6 +69,11 @@ def gen_node_content:
 			end,
 			if haspath(["events", "death", "date"]) then
 				{ death: [.events.death.date, ""] }
+			else
+				{}
+			end,
+			if config.display_images and has("image") then
+				{image}
 			else
 				{}
 			end
@@ -221,7 +231,7 @@ def main:
 		"\\begin{document}\n",
 		"\\begin{tikzpicture}\n",
 		"\\genealogytree[\n",
-		"	template=\(config.template),\n",
+		"	template=\(get_template),\n",
 		"	insert phantom for childless families,\n",
 		"	insert for childless families level limit = -\($depth)\n",
 		"]{\n",
@@ -269,6 +279,7 @@ main
 #  |   (, "partners": [ PERSON... ])?
 #  |   (, "parent_index": NUMBER)?
 #  |   (, "sibling_index": NUMBER)?
+#  |   (, "image": FILEPATH)?
 #  | }
 #  |
 #  | NAME ::= STRING or
@@ -318,6 +329,7 @@ main
 #    {
 #      "template": "signpost",
 #      "pretty_print": true,
+#      "display_images": true,
 #      "exclude_partners": false
 #    };
 #
@@ -329,15 +341,11 @@ main
 #
 # =item database pole
 #
-# =item database poleportrait
-#
 # =item database portrait
 #
 # =item database traditional
 #
 # =item database sideways
-#
-# =item database sidewaysportrait
 #
 # =back
 #
