@@ -5,12 +5,13 @@
 # DATE: Thursday, June 18th, 2026
 # ABOUT: a wrapper for the LaTeX genealogytree package
 # ORIGIN: https://github.com/zachary-krepelka/genealogy.git
-# UPDATED: Saturday, September 5th, 2026 at 12:36 AM
+# UPDATED: Wednesday, September 9th, 2026 at 4:11 PM
 
 def config:
 	{
 		"template": "signpost",
 		"pretty_print": true,
+		"indent_string": "\t",  # if pretty-printing
 		"reduce_output": false, # if the template supports it
 		"display_images": true, # if the template supports it
 		"exclude_partners": false
@@ -92,6 +93,9 @@ def gen_node_content:
 		] | add
 	}[get_processing];
 
+def get_indentation(number_of_indents):
+	number_of_indents * config.indent_string;
+
 def format_node_syntax(type_chr; options; content):
 
 	( options
@@ -122,23 +126,25 @@ def format_node_syntax(type_chr; options; content):
 def gen_node(node_type):
 	format_node_syntax(node_type; gen_node_options; gen_node_content);
 
-def gen_leaf(depth; node_def):
+def gen_leaf(indents; node_def):
 	if config.pretty_print then
-		"\n\("\t" * depth)\(node_def)"
+		"\n\(get_indentation(indents))\(node_def)"
 	else
 		node_def
 	end;
 
-def gen_branch(fam_type; is_phantom; depth; head_of_fam; rest_of_fam):
+def gen_branch(fam_type; is_phantom; indents; head_of_fam; rest_of_fam):
 	if is_phantom then
-		add(gen_leaf(depth; head_of_fam), rest_of_fam)
+		add(gen_leaf(indents; head_of_fam), rest_of_fam)
 	else
 		if config.pretty_print then
-			"\t" * depth as $indentation |
-				"\n\($indentation)\(fam_type) {" +
-				"\n\($indentation)\t\(head_of_fam)\(rest_of_fam)" +
-				"\n\($indentation)}" |
-				if depth == 0 then .[1:] end
+			add(
+				"\n\(get_indentation(indents))\(fam_type) {",
+				gen_leaf(indents + 1; head_of_fam),
+				rest_of_fam,
+				"\n\(get_indentation(indents))}"
+			)
+			| if indents == 0 then .[1:] end # strip initial newline
 		else
 			"\(fam_type){\(head_of_fam)\(rest_of_fam)}"
 		end
@@ -150,9 +156,9 @@ def with_indices:
 def get_children:
 	.children | sort_by(.sibling_index, .events.birth.date)?;
 
-def treeify(depth):
+def treeify(context):
 	if .partners and (config.exclude_partners | not) then # 1, 2
-		gen_branch("child"; false; depth;
+		gen_branch("child"; false; context.indents;
 			gen_node("g");
 			. as $consanguineal_partner
 			| add(
@@ -161,13 +167,18 @@ def treeify(depth):
 						(
 							null;
 							$affinal_partner.index == 0 as $is_first_union
-							| gen_branch("union"; $is_first_union; depth + 1;
+							| gen_branch("union"; $is_first_union; context.indents + 1;
 									$affinal_partner | gen_node("p");
 									add(
 										$consanguineal_partner
 										| get_children[]?
 										| select(.parent_index == $affinal_partner.index)
-										| treeify(depth + if $is_first_union then 1 else 2 end)
+										| treeify(
+												context
+												| .depth += 1
+												| .indents += if $is_first_union then 1 else 2 end
+											)
+										#
 									) // "" # occurs when unions are childless
 								)
 							#
@@ -177,12 +188,20 @@ def treeify(depth):
 			#
 		)
 	elif .children then # 3
-		gen_branch("child"; false; depth;
+		gen_branch("child"; false; context.indents;
 			gen_node("g");
-			add(get_children[] | treeify(depth + 1))
+			add(
+				get_children[]
+				| treeify(
+						context
+						| .depth += 1
+						| .indents += 1
+					)
+				#
+			)
 		)
 	else # 4
-		gen_leaf(depth; gen_node("c"))
+		gen_leaf(context.indents; gen_node("c"))
 	end;
 
 # ------------------------------------------------------------------------------
@@ -244,11 +263,14 @@ def main:
 		"\\begin{document}\n",
 		"\\begin{tikzpicture}\n",
 		"\\genealogytree[\n",
-		"	template=\(get_template),\n",
-		"	insert phantom for childless families,\n",
-		"	insert for childless families level limit = -\($depth)\n",
+		"\(get_indentation(1))template=\(get_template),\n",
+		"\(get_indentation(1))insert phantom for childless families,\n",
+		"\(get_indentation(1))insert for childless families level limit = -\($depth)\n",
 		"]{\n",
-		treeify(0),
+		treeify({
+			depth: 0,
+			indents: 0
+		}),
 		"}\n",
 		"\\end{tikzpicture}\n",
 		"\\end{document}"
@@ -342,6 +364,7 @@ main
 #    {
 #      "template": "signpost",
 #      "pretty_print": true,
+#      "indent_string": "\t",
 #      "reduce_output": false,
 #      "display_images": true,
 #      "exclude_partners": false
