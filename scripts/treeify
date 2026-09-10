@@ -5,7 +5,7 @@
 # DATE: Thursday, June 18th, 2026
 # ABOUT: a wrapper for the LaTeX genealogytree package
 # ORIGIN: https://github.com/zachary-krepelka/genealogy.git
-# UPDATED: Wednesday, September 9th, 2026 at 4:11 PM
+# UPDATED: Thursday, September 10th, 2026 at 7:42 AM
 
 def config:
 	{
@@ -96,6 +96,12 @@ def gen_node_content:
 def get_indentation(number_of_indents):
 	number_of_indents * config.indent_string;
 
+def indent_text_block(number_of_indents):
+	add("\n", .) | gsub("\n\\K"; get_indentation(number_of_indents));
+
+def pad_str(len):
+	add(., " " * (len - length));
+
 def format_node_syntax(type_chr; options; content):
 
 	( options
@@ -106,18 +112,29 @@ def format_node_syntax(type_chr; options; content):
 
 	( content
 		| if type == "object" then
-				to_entries
-				| map(
-						"\(.key)=\(
-							.value
-							| if type == "array" then
-									map("{\(.)}") | add
-								else
-									"{\(.)}"
-								end
-						)"
-					)
-				| join(",")
+				(keys | max_by(length) | length) as $max_key_len
+				| to_entries
+				| map(add(
+					(.key
+					| if config.pretty_print then
+							pad_str($max_key_len)
+						end),
+					("="
+					| if config.pretty_print then
+							" \(.) "
+						end),
+					(.value
+					| if type == "array" then
+							map("{\(.)}") | add
+						else
+							"{\(.)}"
+						end)
+					))
+				| if config.pretty_print then
+						join(",\n") | indent_text_block(1) | add(., "\n")
+					else
+						join(",")
+					end
 			end
 	) as $content_str |
 
@@ -127,11 +144,10 @@ def gen_node(node_type):
 	format_node_syntax(node_type; gen_node_options; gen_node_content);
 
 def gen_leaf(indents; node_def):
-	if config.pretty_print then
-		"\n\(get_indentation(indents))\(node_def)"
-	else
-		node_def
-	end;
+	node_def
+	| if config.pretty_print then
+			indent_text_block(indents)
+		end;
 
 def gen_branch(fam_type; is_phantom; indents; head_of_fam; rest_of_fam):
 	if is_phantom then
@@ -139,10 +155,10 @@ def gen_branch(fam_type; is_phantom; indents; head_of_fam; rest_of_fam):
 	else
 		if config.pretty_print then
 			add(
-				"\n\(get_indentation(indents))\(fam_type) {",
+				("\(fam_type) {" | indent_text_block(indents)),
 				gen_leaf(indents + 1; head_of_fam),
 				rest_of_fam,
-				"\n\(get_indentation(indents))}"
+				("}" | indent_text_block(indents))
 			)
 			| if indents == 0 then .[1:] end # strip initial newline
 		else
