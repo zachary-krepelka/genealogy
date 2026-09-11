@@ -22,13 +22,6 @@ test -d "$progenitor" || {
 	exit 1
 }
 
-inspect() {
-	if $opt_debug
-	then vipe
-	else cat
-	fi
-}
-
 mkdir -p deliverables
 
 bash scripts/jaywalk \
@@ -36,7 +29,10 @@ bash scripts/jaywalk \
                -B .partners[%u].image:node_p%u.jpg \
                        "$progenitor" bio.json |
 	jq -rf scripts/treeify |
-	inspect |
+	if $opt_debug
+	then vipe --suffix tex
+	else cat
+	fi |
 	pdflatex -jobname=deliverables/tree &&
 	latexmk -c -cd deliverables/tree.pdf
 
