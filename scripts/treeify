@@ -5,17 +5,26 @@
 # DATE: Thursday, June 18th, 2026
 # ABOUT: a wrapper for the LaTeX genealogytree package
 # ORIGIN: https://github.com/zachary-krepelka/genealogy.git
-# UPDATED: Thursday, September 10th, 2026 at 7:42 AM
+# UPDATED: Friday, September 11th, 2026 at 5:34 AM
 
 def config:
-	{
-		"template": "signpost",
-		"pretty_print": true,
-		"indent_string": "\t",  # if pretty-printing
-		"reduce_output": false, # if the template supports it
-		"display_images": true, # if the template supports it
-		"exclude_partners": false
-	};
+	if $ARGS.named | has("config") then
+		$ARGS.named.config # return the user-supplied configuration
+		| if type == "array" then
+				.[0] # if passed via --slurpfile config file
+			else
+				. # if passed via --argjson config string
+			end
+	else # return the default configurtation
+		{
+			template: "signpost",
+			pretty_print: true,
+			indent_string: "  ",    # if pretty-printing
+			reduce_output: false,   # if the template supports it
+			display_images: true,   # if the template supports it
+			exclude_partners: false
+		}
+	end;
 
 def haspath(candidate):
 	IN(paths; candidate);
@@ -304,7 +313,11 @@ main
 #
 # =head2 Usage
 #
-#  jq -rf treeify family-tree.json > family-tree.tex
+#  jq -rf treeify [--slurpfile config FILE | --argjson config STRING] FILE
+#
+# =head2 Example
+#
+#  jq -rf treeify --slurpfile config.json family-tree.json > family-tree.tex
 #
 # =head2 Documentation
 #
@@ -371,26 +384,45 @@ main
 #
 # =head1 OPTIONS
 #
-# Currently, options are set by manually editing the source code.  By opening
-# this script in a text editor, the user will find a top-level function named
-# C<config> which returns an object literal.  The values in this object may be
-# changed to facilitate user preference configuration.
-#
-#  def config:
-#    {
-#      "template": "signpost",
-#      "pretty_print": true,
-#      "indent_string": "\t",
-#      "reduce_output": false,
-#      "display_images": true,
-#      "exclude_partners": false
-#    };
-#
-# The supported templates are listed below.
+# Configuration may be passed in a JSON object either as a file or as a string
+# using one of these two flags on the command line.
 #
 # =over
 #
-# =item * signpost (default)
+# =item --slurpfile config FILE
+#
+# =item --argjson config STRING
+#
+# =back
+#
+# The default configuration is shown below, and any user-supplied configuration
+# must have all of the same keys.
+#
+#  {
+#    "template": "signpost",
+#    "pretty_print": true,
+#    "indent_string": "  ",
+#    "reduce_output": false,
+#    "display_images": true,
+#    "exclude_partners": false
+#  }
+#
+# Here's a description of each option.
+#
+# =over
+#
+# =item "template": STRING (default: "signpost")
+#
+# The LaTeX genealogytree package provides a set of predefined styles for a
+# genealogytree graph.  This option applies one of those styles.  Because the
+# purpose of this program is currently to generate descendancy diagrams, which
+# is a specific kind of genealogytree graph, only a subset of the
+# templates--those that pertain to this kind--are supported.  These are listed
+# below.
+#
+# =over
+#
+# =item * signpost
 #
 # =item * database pole
 #
@@ -403,8 +435,8 @@ main
 # =back
 #
 # Note that variations of base templates are handled using other configuration
-# parameters.  For example, the genealogytree LaTeX package provides a base
-# template C<database pole> with three adjacent templates:
+# parameters.  For example, the genealogytree package provides a base template
+# C<database pole> with three adjacent templates:
 #
 # =over
 #
@@ -419,6 +451,58 @@ main
 # In our program, the user need only supply the base template.  The correct
 # variation of the base template is chosen depending on the values of the
 # configuration parameters C<reduce_output> and C<display_images>.
+#
+# =item "pretty_print": BOOLEAN (default: true)
+#
+# Recall that this program outputs LaTeX source code.  Primarily, it outputs a
+# genealogytree graph file wrapped in just enough tex code to compile as a
+# standalone image.
+#
+# If set to true, this option pretty-prints the genealogytree graph code in a
+# manner consistent with the example graph files provided in the genealogytree
+# manual.  If set to false, the graph code is condensed to one line with minimal
+# spacing.
+#
+# =item "indent_string": STRING (default: "S<  >")
+#
+# This option determines the kind of indentation used in the resulting graph
+# code if pretty-printing.  Some permissible values are listed.
+#
+# =over
+#
+# =item * "\t"
+#
+# =item * "S<  >"
+#
+# =item * "S<    >"
+#
+# =item * "S<        >"
+#
+# =back
+#
+# =item "reduce_output": BOOLEAN (default: false)
+#
+# Some genealogytree templates support a reduced form that produces a
+# scaled-down version of the image it would otherwise produce.  This option, if
+# set to true, uses the reduced form of a template if the template supports it.
+#
+# This setting is relevant when the dataset is large.  The LaTeX engine can
+# crash with an arithmetic overflow if it runs out of space, i.e., when the
+# family tree becomes too large, usually width-wise.
+#
+# =item "display_images": BOOLEAN (default: true)
+#
+# If true, display a portrait of each individual in the family tree for whom
+# paths to image files are provided.  If false, do not display images even where
+# paths to image files are provided.
+#
+# =item "exclude_partners": BOOLEAN (default: false)
+#
+# If true, include only consanguineous individuals in the family tree, those
+# born into the family.  If false, include both consanguineous and affinal
+# individuals in the family tree, those either born or married into the family.
+#
+# =back
 #
 # =head1 EXAMPLES
 #
