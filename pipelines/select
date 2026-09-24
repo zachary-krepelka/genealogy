@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+
+# a quick-and-dirty proof of concept for a wrapper of scripts/select
+
+# i don't know if i'll find a use for this
+
+find data -mindepth 1 -maxdepth 1 -type d |
+	sort |
+	{
+		while read family
+		do
+			entries="$entries $family ${family##*/} ${status:-on}"
+			#                 tag     item          status
+			status=off
+			((families++))
+		done
+		echo $families   $entries
+		#    list-height [ tag item status ] ...
+	} |
+	dialog \
+		--backtitle "$0" \
+		--title 'Family Selector' \
+		--ok-label Select \
+		--no-cancel \
+		--no-tags \
+		--radiolist 'Choose a family:' 0 0 \
+		--file /dev/stdin 2>&1 >/dev/tty |
+	xargs -I family find family -mindepth 1 -maxdepth 1 -type d |
+	head -n 1 | # there can be only one progenitor
+	xargs -I progenitor bash scripts/jaywalk progenitor bio.json |
+	jq -rf scripts/select |
+	dialog \
+		--backtitle "$0" \
+		--title 'Family Member Selector' \
+		--ok-label Select \
+		--no-cancel \
+		--scrollbar \
+		--item-help \
+		--treeview 'Choose an individual in the family:' 0 0 \
+		--file /dev/stdin 2>&1 > /dev/tty |
+	dialog \
+		--title 'Materialized Path' \
+		--backtitle "$0" \
+		--msgbox \
+		--file /dev/stdin 0 0
+
+clear

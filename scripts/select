@@ -1,0 +1,94 @@
+#!/usr/bin/env -S jq -f
+
+# FILENAME: select
+# AUTHOR: Zachary Krepelka
+# DATE: Sunday, September 20th, 2026
+# ABOUT: select a person within a family tree
+# USAGE: jq -rf select family-tree.json |
+#          dialog --treeview <text> <height> <width> --file /dev/stdin
+# ORIGIN: https://github.com/zachary-krepelka/genealogy.git
+# UPDATED: Thursday, September 24th, 2026 at 3:20 AM
+
+def get_first_name:
+  .name.first? // .name // "unknown";
+
+def with_lineage:
+  def recurse(context):
+    {
+      depth: context.depth + 1,
+      stack: context.stack + [get_first_name]
+    } as $context
+    | add(
+      .,
+      {
+        lineage: $context.stack | join("/"), # acts as a materialized path
+        generation: $context.depth
+      },
+      if .children then
+        {
+	  # FIXME accumulating into an array is costly
+          children: [(.children[] | recurse($context))]
+        }
+      else
+        empty
+      end
+    );
+  recurse({depth: -1, stack: []});
+
+def is_progenitor:
+  .generation == 0;
+
+def dialog_escape:
+  gsub(" "; "\" \"");
+
+# =============================================================================
+#
+# dialog [common-options] \
+# --treeview text height width list-height [tag item status depth item-help] ...
+#                                           ^   ^    ^      ^     ^
+#                                          /|\ /|\  /|\    /|\   /|\
+#                                           |   |    |      |     |
+#                                           |   |    |      |     |
+# value returned but not displayed ---------+   |    |      |     |
+#                                               |    |      |     |
+# value displayed but not returned -------------+    |      |     |
+#                                                    |      |     |
+# determines if the radio button is selected --------+      |     |
+#                                                           |     |
+# specifies the depth of item in the tree ------------------+     |
+#                                                                 |
+# if [common-options] contains --item-help, ----------------------+
+# look for this string to display at the bottom of the screen
+#
+# =============================================================================
+
+def config:
+  {
+    item_help:
+      true
+      # if true, user must supply --item-help to dialog
+      # if false, user should not supply --item-help
+  };
+
+def main:
+  [
+    with_lineage
+    | recurse(.children[]?)
+    | {
+        tag:       .lineage,
+        item:       get_first_name,
+        status:     if is_progenitor then "on" else "off" end,
+        depth:     .generation | tostring,
+        item_help: .lineage | gsub("/"; " > ")
+	# idea: color-code item-help to indicate gender
+      }
+      | if config.item_help | not then
+          del(.item_help)
+        end
+    | [.[] | dialog_escape]
+    | join(" ")
+  ]
+  | [length] + . # this is the list-height
+  | join(" ");
+
+main
