@@ -26,7 +26,7 @@ def with_lineage:
       },
       if .children then
         {
-	  # FIXME accumulating into an array is costly
+          # FIXME accumulating into an array is costly
           children: [(.children[] | recurse($context))]
         }
       else
@@ -80,7 +80,7 @@ def main:
         status:     if is_progenitor then "on" else "off" end,
         depth:     .generation | tostring,
         item_help: .lineage | gsub("/"; " > ")
-	# idea: color-code item-help to indicate gender
+        # idea: color-code item-help to indicate gender
       }
       | if config.item_help | not then
           del(.item_help)
